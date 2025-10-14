@@ -1,0 +1,156 @@
+rules:
+  - id: asvs-2-1-1-weak-password-length
+    patterns:
+      - pattern-either:
+          - pattern: len($PASSWORD) < $NUM
+          - pattern: $PASSWORD.length < $NUM
+          - pattern: |
+              if len($PASSWORD) < $NUM:
+                ...
+      - metavariable-comparison:
+          metavariable: $NUM
+          comparison: $NUM < 12
+    message: |
+      ASVS 2.1.1 (Level 1): Password must be at least 12 characters.
+      Current validation allows passwords shorter than 12 characters.
+      This makes passwords vulnerable to brute force attacks.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      vulnerability: weak_password
+      asvs_id: "2.1.1"
+      asvs_level: 1
+      category: authentication
+      cwe: "CWE-521"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      remediation: "Enforce minimum password length of 12 characters"
+
+  - id: asvs-9-2-1-weak-password-hashing-md5
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.md5($PASSWORD)
+          - pattern: hashlib.sha1($PASSWORD)
+          - pattern: hashlib.sha256($PASSWORD)
+    message: |
+      ASVS 9.2.1: Weak password hashing algorithm detected.
+      MD5, SHA1, and SHA256 are not suitable for password hashing.
+      Use Argon2id, bcrypt, scrypt, or PBKDF2 instead.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: weak_password_hash
+      asvs_id: "9.2.1"
+      asvs_level: 1
+      category: cryptography
+      cwe: "CWE-916"
+      owasp: "A02:2021 - Cryptographic Failures"
+      remediation: |
+        Use secure password hashing:
+        from passlib.hash import argon2
+        password_hash = argon2.hash(password)
+
+  - id: asvs-2-3-1-hardcoded-password
+    patterns:
+      - pattern-either:
+          - pattern: password = "..."
+          - pattern: PASSWORD = "..."
+          - pattern: pwd = "..."
+          - pattern: passwd = "..."
+      - pattern-not: password = ""
+      - pattern-not: PASSWORD = ""
+    message: |
+      ASVS 2.3.1: Hardcoded password detected.
+      Passwords should never be hardcoded in source code.
+      Use environment variables or secure credential storage.
+    severity: ERROR
+    languages: [python, javascript, typescript, java, go]
+    metadata:
+      vulnerability: hardcoded_password
+      asvs_id: "2.3.1"
+      asvs_level: 1
+      category: authentication
+      cwe: "CWE-798"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      remediation: "Load passwords from environment variables or secure vaults"
+
+  - id: asvs-2-2-1-missing-rate-limiting
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route("/.../login", ...)
+              def $FUNC(...):
+                ...
+          - pattern: |
+              @app.post("/.../login")
+              def $FUNC(...):
+                ...
+      - pattern-not-inside: |
+          @limiter.limit(...)
+          def $FUNC(...):
+            ...
+      - pattern-not-inside: |
+          @rate_limit(...)
+          def $FUNC(...):
+            ...
+    message: |
+      ASVS 2.2.1: Login endpoint missing rate limiting.
+      Implement rate limiting to prevent brute force attacks.
+      Add exponential backoff or CAPTCHA after failed attempts.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      vulnerability: no_rate_limiting
+      asvs_id: "2.2.1"
+      asvs_level: 1
+      category: authentication
+      cwe: "CWE-307"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      remediation: |
+        Use Flask-Limiter:
+        @limiter.limit("5 per 15 minutes")
+        @app.route("/login", methods=["POST"])
+        def login(): ...
+
+  - id: asvs-2-7-1-sms-2fa
+    patterns:
+      - pattern-either:
+          - pattern: send_sms($PHONE, ...)
+          - pattern: twilio.messages.create(...)
+          - pattern: sns.publish(PhoneNumber=..., ...)
+    message: |
+      ASVS 2.7.1: SMS-based 2FA detected.
+      SMS and PSTN are weak authentication methods (SIM swapping, SS7 attacks).
+      Prioritize TOTP authenticator apps or push notifications.
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      vulnerability: weak_2fa
+      asvs_id: "2.7.1"
+      asvs_level: 1
+      category: authentication
+      cwe: "CWE-287"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      remediation: "Implement TOTP (pyotp) or push notifications instead of SMS"
+
+  - id: asvs-2-5-2-security-questions
+    patterns:
+      - pattern-either:
+          - pattern: security_question
+          - pattern: securityQuestion
+          - pattern: secret_question
+          - pattern: password_hint
+          - pattern: passwordHint
+    message: |
+      ASVS 2.5.2: Security questions or password hints detected.
+      These are inherently weak and easily guessable.
+      Use proper password reset with time-limited tokens instead.
+    severity: WARNING
+    languages: [python, javascript, typescript, java]
+    metadata:
+      vulnerability: weak_password
+      asvs_id: "2.5.2"
+      asvs_level: 1
+      category: authentication
+      cwe: "CWE-640"
+      remediation: "Use email-based password reset with secure, time-limited tokens"
+

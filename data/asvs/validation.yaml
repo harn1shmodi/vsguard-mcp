@@ -1,0 +1,300 @@
+# OWASP ASVS v4.0 - Chapter 5: Validation, Sanitization and Encoding
+
+requirements:
+  - id: "5.1.1"
+    level: 1
+    category: "Input Validation"
+    requirement: "Verify that the application has defenses against HTTP parameter pollution attacks, particularly if the application framework makes no distinction about the source of request parameters (GET, POST, cookies, headers, or environment variables)."
+    cwe: "CWE-235"
+    description: |
+      HTTP Parameter Pollution occurs when an attacker sends multiple parameters
+      with the same name, potentially bypassing security controls.
+    implementation_guide: |
+      - Use framework functions that handle parameter sources properly
+      - Validate that parameters appear only once
+      - Be explicit about which parameter source to use (query vs body)
+      - Don't mix parameter sources without validation
+    code_examples:
+      - |
+        # Python Flask - Be explicit about parameter source
+        @app.route('/user')
+        def get_user():
+            # GOOD - Explicit about source
+            user_id = request.args.get('id')  # Only from query string
+            
+            # BAD - Ambiguous
+            # user_id = request.values.get('id')  # Could be from multiple sources
+
+  - id: "5.1.3"
+    level: 1
+    category: "Input Validation"
+    requirement: "Verify that all input (HTML form fields, REST requests, URL parameters, HTTP headers, cookies, batch files, RSS feeds, etc) is validated using positive validation (allow lists)."
+    cwe: "CWE-20"
+    description: |
+      Use allowlists (positive validation) rather than denylists.
+      Specify what IS allowed rather than what isn't.
+    implementation_guide: |
+      - Define expected input format explicitly
+      - Validate against allowed patterns, types, ranges
+      - Reject anything that doesn't match expected format
+      - Use strong typing where possible
+      - Validate data types, formats, ranges, and lengths
+    code_examples:
+      - |
+        # Python with Pydantic (strong typing and validation)
+        from pydantic import BaseModel, Field, validator
+        from typing import Literal
+        
+        class UserInput(BaseModel):
+            username: str = Field(..., min_length=3, max_length=20, pattern=r'^[a-zA-Z0-9_]+$')
+            email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+            age: int = Field(..., ge=0, le=150)
+            role: Literal['user', 'admin', 'moderator']
+            
+            @validator('username')
+            def username_no_special_chars(cls, v):
+                if not v.isalnum() and '_' not in v:
+                    raise ValueError('Username must be alphanumeric')
+                return v
+
+  - id: "5.2.1"
+    level: 1
+    category: "Sanitization and Sandboxing"
+    requirement: "Verify that all untrusted HTML input from WYSIWYG editors or similar is properly sanitized with an HTML sanitizer library or framework feature."
+    cwe: "CWE-116"
+    description: |
+      Rich text editors can contain malicious HTML/JavaScript.
+      Sanitize HTML on the server side before storing or displaying.
+    implementation_guide: |
+      - Use established HTML sanitization libraries (DOMPurify, Bleach)
+      - Never trust client-side sanitization alone
+      - Define allowed HTML tags and attributes
+      - Remove all JavaScript event handlers
+      - Strip dangerous tags (script, iframe, object)
+    code_examples:
+      - |
+        # Python with bleach library
+        import bleach
+        
+        ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'u', 'a', 'ul', 'ol', 'li']
+        ALLOWED_ATTRIBUTES = {'a': ['href', 'title']}
+        
+        def sanitize_html(untrusted_html: str) -> str:
+            """Sanitize user-provided HTML."""
+            return bleach.clean(
+                untrusted_html,
+                tags=ALLOWED_TAGS,
+                attributes=ALLOWED_ATTRIBUTES,
+                strip=True
+            )
+      - |
+        // JavaScript with DOMPurify
+        import DOMPurify from 'dompurify';
+        
+        function sanitizeHTML(untrustedHTML) {
+          return DOMPurify.sanitize(untrustedHTML, {
+            ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'a'],
+            ALLOWED_ATTR: ['href']
+          });
+        }
+
+  - id: "5.3.3"
+    level: 1
+    category: "Output Encoding and Injection Prevention"
+    requirement: "Verify that context-aware, preferably automated - or at worst, manual - output escaping protects against reflected, stored, and DOM based XSS."
+    cwe: "CWE-79"
+    description: |
+      Escape output based on context (HTML, JavaScript, URL, CSS) to prevent XSS.
+      Use templating engines that auto-escape by default.
+    implementation_guide: |
+      - Use templating engines with auto-escaping (Jinja2, React, Vue)
+      - Escape based on output context (HTML vs JS vs URL)
+      - Never insert untrusted data directly into script tags
+      - Use Content-Security-Policy header as defense-in-depth
+      - Validate and sanitize on input, escape on output
+    code_examples:
+      - |
+        # Python Jinja2 (auto-escaping enabled by default)
+        from jinja2 import Environment
+        
+        env = Environment(autoescape=True)
+        template = env.from_string('<p>Hello {{ username }}</p>')
+        
+        # This will escape HTML characters automatically
+        output = template.render(username='<script>alert(1)</script>')
+        # Result: <p>Hello &lt;script&gt;alert(1)&lt;/script&gt;</p>
+      - |
+        // React (auto-escaping by default)
+        function UserProfile({ username }) {
+          // React automatically escapes this
+          return <div>Hello {username}</div>;
+        }
+        
+        // For raw HTML (use carefully!):
+        function RawHTML({ html }) {
+          // Sanitize first!
+          const clean = DOMPurify.sanitize(html);
+          return <div dangerouslySetInnerHTML={{ __html: clean }} />;
+        }
+
+  - id: "5.3.4"
+    level: 1
+    category: "Output Encoding and Injection Prevention"
+    requirement: "Verify that data selection or database queries (e.g. SQL, HQL, ORM, NoSQL) use parameterized queries, ORMs, entity frameworks, or are otherwise protected from database injection attacks."
+    cwe: "CWE-89"
+    description: |
+      SQL injection is prevented by using parameterized queries or ORMs.
+      Never concatenate user input into SQL queries.
+    implementation_guide: |
+      - Always use parameterized queries (prepared statements)
+      - Use ORM frameworks (SQLAlchemy, Django ORM, Hibernate)
+      - Never concatenate user input into queries
+      - Apply same principle to NoSQL databases
+      - Use stored procedures with parameters (not dynamic SQL)
+    code_examples:
+      - |
+        # Python with sqlite3 - GOOD (parameterized)
+        import sqlite3
+        
+        def get_user_by_id(user_id: int):
+            conn = sqlite3.connect('app.db')
+            cursor = conn.cursor()
+            
+            # SECURE: Using parameter placeholder
+            cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+            return cursor.fetchone()
+        
+        # Python with sqlite3 - BAD (vulnerable to SQL injection)
+        def get_user_by_id_bad(user_id: str):
+            cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")  # NEVER DO THIS
+            cursor.execute("SELECT * FROM users WHERE id = " + user_id)  # NEVER DO THIS
+      - |
+        # Python with SQLAlchemy ORM - GOOD
+        from sqlalchemy import select
+        
+        def get_user_by_username(username: str):
+            stmt = select(User).where(User.username == username)
+            return session.execute(stmt).scalar_one_or_none()
+      - |
+        // Node.js with mysql2 - GOOD
+        const mysql = require('mysql2/promise');
+        
+        async function getUser(userId) {
+          const [rows] = await connection.execute(
+            'SELECT * FROM users WHERE id = ?',
+            [userId]
+          );
+          return rows[0];
+        }
+
+  - id: "5.3.5"
+    level: 1
+    category: "Output Encoding and Injection Prevention"
+    requirement: "Verify that where parameterized or safer mechanisms are not present, context-specific output encoding is used to protect against injection attacks, such as the use of SQL escaping to protect against SQL injection."
+    cwe: "CWE-89"
+    description: |
+      If parameterized queries are not available, use proper escaping functions.
+      This is a fallback - parameterized queries are always preferred.
+    implementation_guide: |
+      - Prefer parameterized queries over escaping
+      - If escaping is necessary, use database-specific escape functions
+      - Never write your own escaping functions
+      - Apply escaping as close to the query as possible
+    code_examples:
+      - |
+        # Python - Using database escape function (not recommended, use parameterized instead)
+        import MySQLdb
+        
+        conn = MySQLdb.connect(host='localhost', user='user', passwd='pass', db='mydb')
+        cursor = conn.cursor()
+        
+        # If you MUST use string formatting (not recommended):
+        username = conn.escape_string(user_input).decode()
+        query = f"SELECT * FROM users WHERE username = '{username}'"
+        
+        # BUT PARAMETERIZED IS BETTER:
+        cursor.execute("SELECT * FROM users WHERE username = %s", (user_input,))
+
+  - id: "5.3.10"
+    level: 1
+    category: "Output Encoding and Injection Prevention"
+    requirement: "Verify that the application protects against XSS attacks by using Content Security Policy (CSP)."
+    cwe: "CWE-1021"
+    description: |
+      Content Security Policy provides defense-in-depth against XSS
+      by restricting sources of executable scripts.
+    implementation_guide: |
+      - Implement strict CSP header
+      - Start with default-src 'self'
+      - Avoid 'unsafe-inline' and 'unsafe-eval'
+      - Use nonces or hashes for inline scripts if needed
+      - Monitor CSP violations via report-uri
+    code_examples:
+      - |
+        # Python Flask
+        @app.after_request
+        def set_csp(response):
+            response.headers['Content-Security-Policy'] = (
+                "default-src 'self'; "
+                "script-src 'self'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: https:; "
+                "font-src 'self'; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self'"
+            )
+            return response
+      - |
+        // Express.js with helmet
+        const helmet = require('helmet');
+        
+        app.use(helmet.contentSecurityPolicy({
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "https:"],
+            fontSrc: ["'self'"],
+            connectSrc: ["'self'"],
+            frameAncestors: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"]
+          }
+        }));
+
+  - id: "5.5.2"
+    level: 1
+    category: "Deserialization Prevention"
+    requirement: "Verify that the application correctly restricts XML parsers to only use the most restrictive configuration possible and to ensure that unsafe features such as resolving external entities are disabled to prevent XML eXternal Entity (XXE) attacks."
+    cwe: "CWE-611"
+    description: |
+      XML External Entity (XXE) attacks exploit XML parsers that process
+      external entities, potentially exposing files or internal network.
+    implementation_guide: |
+      - Disable external entity resolution in XML parsers
+      - Disable DTD processing if not needed
+      - Use secure XML parsing libraries
+      - Validate XML against strict schema
+      - Consider using JSON instead of XML
+    code_examples:
+      - |
+        # Python with defusedxml (secure XML parsing)
+        import defusedxml.ElementTree as ET
+        
+        def parse_xml_safely(xml_string: str):
+            """Parse XML with XXE protection."""
+            try:
+                tree = ET.fromstring(xml_string)
+                return tree
+            except ET.ParseError as e:
+                raise ValueError(f"Invalid XML: {e}")
+        
+        # Or with standard library (manual configuration):
+        from xml.etree.ElementTree import XMLParser
+        
+        parser = XMLParser()
+        parser.entity = {}  # Disable entity expansion
+        parser.feed(xml_string)
+

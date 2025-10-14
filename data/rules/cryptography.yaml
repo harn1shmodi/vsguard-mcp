@@ -1,0 +1,177 @@
+rules:
+  - id: asvs-6-2-2-weak-cipher-des
+    patterns:
+      - pattern-either:
+          - pattern: Crypto.Cipher.DES
+          - pattern: Crypto.Cipher.DES3
+          - pattern: cryptography.hazmat.primitives.ciphers.algorithms.TripleDES(...)
+    message: |
+      ASVS 6.2.2: Weak cipher algorithm detected (DES/3DES).
+      DES and 3DES are deprecated and insecure.
+      Use AES-256 with GCM mode instead.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: weak_cipher
+      asvs_id: "6.2.2"
+      asvs_level: 1
+      category: cryptography
+      cwe: "CWE-327"
+      owasp: "A02:2021 - Cryptographic Failures"
+      remediation: |
+        Use AES-GCM:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        aesgcm = AESGCM(key)
+
+  - id: asvs-6-2-5-ecb-mode
+    patterns:
+      - pattern-either:
+          - pattern: modes.ECB()
+          - pattern: AES.MODE_ECB
+          - pattern: Cipher.MODE_ECB
+    message: |
+      ASVS 6.2.5: Insecure ECB mode detected.
+      ECB mode reveals patterns in plaintext and is insecure.
+      Use GCM, CBC, or CTR mode instead.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: ecb_mode
+      asvs_id: "6.2.5"
+      asvs_level: 1
+      category: cryptography
+      cwe: "CWE-326"
+      owasp: "A02:2021 - Cryptographic Failures"
+      remediation: "Use AES-GCM mode for authenticated encryption"
+
+  - id: asvs-6-2-2-insecure-random
+    patterns:
+      - pattern-either:
+          - pattern: random.random()
+          - pattern: random.randint(...)
+          - pattern: random.choice(...)
+          - pattern: Math.random()
+    message: |
+      ASVS 6.2.2: Insecure random number generator.
+      random/Math.random() are not cryptographically secure.
+      Use secrets module (Python) or crypto.getRandomValues (JS).
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      vulnerability: weak_crypto
+      asvs_id: "6.2.2"
+      asvs_level: 1
+      category: cryptography
+      cwe: "CWE-330"
+      remediation: |
+        Python: import secrets; secrets.token_bytes(32)
+        JavaScript: crypto.getRandomValues(new Uint8Array(32))
+
+  - id: asvs-6-2-2-md5-hash
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.md5(...)
+          - pattern: crypto.createHash('md5')
+    message: |
+      ASVS 6.2.2: MD5 hash algorithm is cryptographically broken.
+      Do not use MD5 for security purposes.
+      Use SHA-256, SHA-3, or BLAKE2 instead.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      vulnerability: weak_hash
+      asvs_id: "6.2.2"
+      asvs_level: 1
+      category: cryptography
+      cwe: "CWE-327"
+      remediation: "Use SHA-256: hashlib.sha256(data)"
+
+  - id: asvs-6-2-2-sha1-hash
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.sha1(...)
+          - pattern: crypto.createHash('sha1')
+    message: |
+      ASVS 6.2.2: SHA-1 is cryptographically weak.
+      SHA-1 is deprecated for security purposes.
+      Use SHA-256 or SHA-3 instead.
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      vulnerability: weak_hash
+      asvs_id: "6.2.2"
+      asvs_level: 1
+      category: cryptography
+      cwe: "CWE-327"
+      remediation: "Use SHA-256: hashlib.sha256(data)"
+
+  - id: asvs-14-3-3-hardcoded-key
+    patterns:
+      - pattern-either:
+          - pattern: key = "..."
+          - pattern: KEY = "..."
+          - pattern: secret = "..."
+          - pattern: SECRET = "..."
+          - pattern: api_key = "..."
+          - pattern: API_KEY = "..."
+      - pattern-not: $KEY = ""
+      - metavariable-pattern:
+          metavariable: $KEY
+          patterns:
+            - pattern-regex: .*(key|secret|password|token).*
+    message: |
+      ASVS 14.3.3: Hardcoded cryptographic key or secret detected.
+      Keys and secrets should never be in source code.
+      Use environment variables or secure key management.
+    severity: ERROR
+    languages: [python, javascript, typescript, java, go]
+    metadata:
+      vulnerability: hardcoded_secret
+      asvs_id: "14.3.3"
+      asvs_level: 1
+      category: data_protection
+      cwe: "CWE-798"
+      remediation: "Load keys from environment variables or AWS Secrets Manager"
+
+  - id: asvs-9-1-2-no-tls-verification
+    patterns:
+      - pattern-either:
+          - pattern: requests.get(..., verify=False)
+          - pattern: requests.post(..., verify=False)
+          - pattern: urllib3.disable_warnings()
+          - pattern: ssl._create_unverified_context()
+    message: |
+      ASVS 9.1.2: TLS certificate verification disabled.
+      This makes the connection vulnerable to MITM attacks.
+      Always verify TLS certificates in production.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: insecure_transport
+      asvs_id: "9.1.2"
+      asvs_level: 1
+      category: communication
+      cwe: "CWE-295"
+      owasp: "A02:2021 - Cryptographic Failures"
+      remediation: "Remove verify=False and use proper CA certificates"
+
+  - id: asvs-6-2-6-iv-reuse
+    patterns:
+      - pattern: |
+          $IV = $STATIC_VALUE
+          ...
+          Cipher(..., modes.CBC($IV))
+    message: |
+      ASVS 6.2.6: Static IV detected.
+      IVs must be randomly generated for each encryption.
+      Reusing IVs compromises security.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: weak_crypto
+      asvs_id: "6.2.6"
+      asvs_level: 2
+      category: cryptography
+      cwe: "CWE-323"
+      remediation: "Generate random IV: iv = os.urandom(16)"
+

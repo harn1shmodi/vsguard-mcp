@@ -1,0 +1,197 @@
+rules:
+  - id: asvs-5-3-4-sql-injection-format
+    patterns:
+      - pattern-either:
+          - pattern: cursor.execute(f"... {$VAR} ...")
+          - pattern: cursor.execute("..." + $VAR + "...")
+          - pattern: cursor.execute("... %s ..." % $VAR)
+          - pattern: cursor.execute("...".format($VAR))
+    message: |
+      ASVS 5.3.4: SQL injection vulnerability detected.
+      User input is concatenated directly into SQL query.
+      Use parameterized queries with placeholders instead.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: sql_injection
+      asvs_id: "5.3.4"
+      asvs_level: 1
+      category: input_validation
+      cwe: "CWE-89"
+      owasp: "A03:2021 - Injection"
+      remediation: |
+        Use parameterized queries:
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+
+  - id: asvs-5-3-4-sql-injection-concatenation
+    patterns:
+      - pattern-either:
+          - pattern: $CURSOR.execute($SQL + $INPUT)
+          - pattern: $CURSOR.execute($SQL % $INPUT)
+    message: |
+      ASVS 5.3.4: SQL injection risk from string concatenation.
+      Never concatenate user input into SQL queries.
+      Use parameterized queries or an ORM.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: sql_injection
+      asvs_id: "5.3.4"
+      asvs_level: 1
+      category: input_validation
+      cwe: "CWE-89"
+      remediation: "Use parameterized queries with ? or %s placeholders"
+
+  - id: asvs-5-3-3-xss-flask-safe
+    patterns:
+      - pattern-either:
+          - pattern: Markup($USER_INPUT)
+          - pattern: |
+              $VAR = $USER_INPUT
+              ...
+              Markup($VAR)
+    message: |
+      ASVS 5.3.3: Potential XSS vulnerability.
+      Marking user input as safe bypasses auto-escaping.
+      Ensure input is properly sanitized before using Markup().
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: xss
+      asvs_id: "5.3.3"
+      asvs_level: 1
+      category: input_validation
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      remediation: "Use auto-escaping templates or sanitize HTML with bleach library"
+
+  - id: asvs-5-3-3-xss-react-dangerously
+    patterns:
+      - pattern: dangerouslySetInnerHTML={{__html:$HTML}}
+    message: |
+      ASVS 5.3.3: XSS risk from dangerouslySetInnerHTML.
+      This bypasses React's XSS protection.
+      Sanitize HTML with DOMPurify before rendering.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      vulnerability: xss
+      asvs_id: "5.3.3"
+      asvs_level: 1
+      category: input_validation
+      cwe: "CWE-79"
+      remediation: |
+        Sanitize first:
+        const clean = DOMPurify.sanitize(html);
+        <div dangerouslySetInnerHTML={{__html: clean}} />
+
+  - id: asvs-5-5-2-xxe-vulnerable
+    patterns:
+      - pattern-either:
+          - pattern: xml.etree.ElementTree.parse($FILE)
+          - pattern: xml.etree.ElementTree.fromstring($STR)
+          - pattern: xml.dom.minidom.parse($FILE)
+          - pattern: xml.dom.minidom.parseString($STR)
+      - pattern-not-inside: |
+          import defusedxml
+          ...
+    message: |
+      ASVS 5.5.2: XML External Entity (XXE) vulnerability.
+      Standard XML parsers are vulnerable to XXE attacks.
+      Use defusedxml library for secure XML parsing.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: xxe
+      asvs_id: "5.5.2"
+      asvs_level: 1
+      category: input_validation
+      cwe: "CWE-611"
+      owasp: "A05:2021 - Security Misconfiguration"
+      remediation: |
+        Use defusedxml:
+        import defusedxml.ElementTree as ET
+        tree = ET.parse(xml_file)
+
+  - id: asvs-5-3-4-nosql-injection
+    patterns:
+      - pattern-either:
+          - pattern: $DB.find({$KEY:$USER_INPUT})
+          - pattern: $DB.find_one({$KEY:$USER_INPUT})
+      - metavariable-pattern:
+          metavariable: $USER_INPUT
+          patterns:
+            - pattern-not: "..."
+    message: |
+      ASVS 5.3.4: Potential NoSQL injection.
+      User input directly in query may allow injection.
+      Validate and sanitize input, use parameterized queries.
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      vulnerability: nosql_injection
+      asvs_id: "5.3.4"
+      asvs_level: 1
+      category: input_validation
+      cwe: "CWE-943"
+      remediation: "Validate input types and use schema validation"
+
+  - id: asvs-5-3-4-command-injection
+    patterns:
+      - pattern-either:
+          - pattern: os.system($CMD + $INPUT)
+          - pattern: subprocess.call($CMD + $INPUT, ...)
+          - pattern: subprocess.run($CMD + $INPUT, ...)
+          - pattern: os.popen($CMD + $INPUT)
+    message: |
+      ASVS 5.3.4: Command injection vulnerability.
+      User input concatenated into shell command.
+      Use parameterized arguments or avoid shell=True.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: command_injection
+      asvs_id: "5.3.4"
+      asvs_level: 1
+      category: input_validation
+      cwe: "CWE-78"
+      owasp: "A03:2021 - Injection"
+      remediation: |
+        Use list arguments:
+        subprocess.run(["command", arg1, arg2], shell=False)
+
+  - id: asvs-5-1-3-missing-input-validation
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route(...)
+              def $FUNC(...):
+                $INPUT = request.args.get(...)
+                ...
+          - pattern: |
+              @app.route(...)
+              def $FUNC(...):
+                $INPUT = request.form.get(...)
+                ...
+      - pattern-not-inside: |
+          ...
+          if not $INPUT:
+            ...
+      - pattern-not-inside: |
+          ...
+          validate($INPUT)
+          ...
+    message: |
+      ASVS 5.1.3: Missing input validation.
+      User input should be validated before use.
+      Use allowlists and validate format, type, and range.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      vulnerability: missing_input_validation
+      asvs_id: "5.1.3"
+      asvs_level: 1
+      category: input_validation
+      cwe: "CWE-20"
+      remediation: "Use Pydantic models or manual validation with allowlists"
+

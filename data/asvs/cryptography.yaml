@@ -1,0 +1,277 @@
+# OWASP ASVS v4.0 - Chapters 6-9: Cryptography and Data Protection
+
+requirements:
+  - id: "6.2.1"
+    level: 1
+    category: "Algorithms"
+    requirement: "Verify that all cryptographic modules fail securely, and errors are handled in a way that does not enable Padding Oracle attacks."
+    cwe: "CWE-310"
+    description: |
+      Cryptographic error messages can leak information about padding,
+      enabling padding oracle attacks.
+    implementation_guide: |
+      - Return generic error messages for cryptographic failures
+      - Don't reveal whether padding validation failed
+      - Use authenticated encryption (AES-GCM) instead of CBC mode
+      - Implement constant-time comparison for MACs
+    code_examples:
+      - |
+        # Python - Generic error handling
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.backends import default_backend
+        
+        def decrypt_data(ciphertext: bytes, key: bytes, iv: bytes) -> bytes:
+            """Decrypt data with generic error handling."""
+            try:
+                cipher = Cipher(
+                    algorithms.AES(key),
+                    modes.GCM(iv),
+                    backend=default_backend()
+                )
+                decryptor = cipher.decryptor()
+                plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+                return plaintext
+            except Exception:
+                # Generic error - don't leak details
+                raise ValueError("Decryption failed")
+
+  - id: "6.2.2"
+    level: 1
+    category: "Algorithms"
+    requirement: "Verify that industry proven or government approved cryptographic algorithms, modes, and libraries are used, instead of custom coded cryptography."
+    cwe: "CWE-327"
+    description: |
+      Never implement your own cryptographic algorithms.
+      Use established libraries with proven algorithms.
+    implementation_guide: |
+      - Use standard libraries (cryptography, libsodium, NaCl)
+      - Use AES-256 for symmetric encryption
+      - Use RSA-2048+ or ECC for asymmetric encryption
+      - Use SHA-256 or SHA-3 for hashing
+      - Never implement crypto primitives yourself
+    code_examples:
+      - |
+        # Python with cryptography library (GOOD)
+        from cryptography.fernet import Fernet
+        
+        # Generate key
+        key = Fernet.generate_key()
+        cipher = Fernet(key)
+        
+        # Encrypt
+        plaintext = b"Secret data"
+        ciphertext = cipher.encrypt(plaintext)
+        
+        # Decrypt
+        decrypted = cipher.decrypt(ciphertext)
+      - |
+        # Python with PyNaCl (GOOD - high-level, secure defaults)
+        import nacl.secret
+        import nacl.utils
+        
+        # Generate key
+        key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
+        box = nacl.secret.SecretBox(key)
+        
+        # Encrypt
+        plaintext = b"Secret data"
+        ciphertext = box.encrypt(plaintext)
+        
+        # Decrypt
+        decrypted = box.decrypt(ciphertext)
+
+  - id: "6.2.5"
+    level: 1
+    category: "Algorithms"
+    requirement: "Verify that insecure block modes (i.e. ECB, etc.), insecure padding modes (i.e. PKCS#1 v1.5, etc.), and weak ciphers are not used unless required for backwards compatibility."
+    cwe: "CWE-326"
+    description: |
+      ECB mode reveals patterns in plaintext. Use CBC, CTR, or GCM modes.
+      Prefer authenticated encryption (GCM, ChaCha20-Poly1305).
+    implementation_guide: |
+      - Use AES-GCM (authenticated encryption) for new applications
+      - Never use ECB mode
+      - If using CBC, add HMAC for authentication
+      - Use random IVs, never reuse IVs with same key
+    code_examples:
+      - |
+        # Python - GOOD (AES-GCM with proper IV)
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        import os
+        
+        def encrypt_aes_gcm(plaintext: bytes, key: bytes) -> tuple[bytes, bytes]:
+            """Encrypt with AES-GCM (authenticated encryption)."""
+            aesgcm = AESGCM(key)
+            iv = os.urandom(12)  # 96-bit IV for GCM
+            ciphertext = aesgcm.encrypt(iv, plaintext, None)
+            return ciphertext, iv
+        
+        def decrypt_aes_gcm(ciphertext: bytes, key: bytes, iv: bytes) -> bytes:
+            """Decrypt with AES-GCM."""
+            aesgcm = AESGCM(key)
+            plaintext = aesgcm.decrypt(iv, ciphertext, None)
+            return plaintext
+        
+        # BAD - Never use ECB mode!
+        # cipher = AES.new(key, AES.MODE_ECB)  # INSECURE!
+
+  - id: "6.2.6"
+    level: 2
+    category: "Algorithms"
+    requirement: "Verify that nonces, initialization vectors, and other single use numbers must not be used for more than one encryption key/data element pair. The method of generation must be appropriate for the algorithm being used."
+    cwe: "CWE-323"
+    description: |
+      Reusing IVs/nonces with the same key can compromise security.
+      Generate a new random IV for each encryption operation.
+    implementation_guide: |
+      - Generate new random IV for each encryption
+      - Use cryptographically secure random number generator
+      - Store IV alongside ciphertext (it's not secret)
+      - Never reuse IV with the same key
+      - For GCM mode, use 96-bit random IV
+    code_examples:
+      - |
+        # Python - Proper IV generation
+        import os
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        
+        def encrypt_with_random_iv(plaintext: bytes, key: bytes) -> tuple[bytes, bytes]:
+            """Encrypt with a fresh random IV."""
+            # Generate random IV (128 bits for AES)
+            iv = os.urandom(16)
+            
+            cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+            encryptor = cipher.encryptor()
+            
+            # Add padding if needed
+            padded = pad_pkcs7(plaintext, 16)
+            ciphertext = encryptor.update(padded) + encryptor.finalize()
+            
+            # Return both ciphertext and IV (IV is not secret)
+            return ciphertext, iv
+
+  - id: "9.1.2"
+    level: 1
+    category: "Communications Security"
+    requirement: "Verify that TLS is used for all connectivity where sensitive data is transmitted or accessed, and does not fall back to insecure or unencrypted protocols."
+    cwe: "CWE-319"
+    description: |
+      All sensitive data must be transmitted over TLS (HTTPS).
+      Do not allow fallback to HTTP.
+    implementation_guide: |
+      - Force HTTPS for all connections
+      - Use HSTS (HTTP Strict Transport Security) header
+      - Redirect HTTP to HTTPS
+      - Use TLS 1.2 or higher only
+      - Disable SSLv3, TLS 1.0, TLS 1.1
+    code_examples:
+      - |
+        # Python Flask - Force HTTPS
+        from flask import Flask, redirect, request
+        
+        @app.before_request
+        def force_https():
+            if not request.is_secure and not app.debug:
+                url = request.url.replace('http://', 'https://', 1)
+                return redirect(url, code=301)
+        
+        @app.after_request
+        def set_security_headers(response):
+            # HSTS: Force HTTPS for 1 year
+            response.headers['Strict-Transport-Security'] = (
+                'max-age=31536000; includeSubDomains'
+            )
+            return response
+
+  - id: "9.2.1"
+    level: 1
+    category: "Server Communications Security"
+    requirement: "Verify that signed or encrypted connections are used for all inbound and outbound connections to and from the server, including management ports, monitoring, authentication, API or web service calls, database, cloud, serverless, mainframe, external, and partner connections."
+    cwe: "CWE-319"
+    description: |
+      All network connections should use TLS, including internal connections.
+      This includes database connections, API calls, monitoring systems.
+    implementation_guide: |
+      - Use TLS for database connections
+      - Use HTTPS for all API calls
+      - Enable TLS for Redis, RabbitMQ, etc.
+      - Use VPN or SSH tunnels for management ports
+      - Don't trust internal networks
+    code_examples:
+      - |
+        # Python - PostgreSQL with TLS
+        import psycopg2
+        
+        conn = psycopg2.connect(
+            host='db.example.com',
+            database='mydb',
+            user='myuser',
+            password='mypass',
+            sslmode='require',  # Require TLS
+            sslrootcert='/path/to/ca-cert.pem'
+        )
+      - |
+        # Python - Redis with TLS
+        import redis
+        
+        r = redis.Redis(
+            host='redis.example.com',
+            port=6380,
+            ssl=True,
+            ssl_cert_reqs='required',
+            ssl_ca_certs='/path/to/ca-cert.pem'
+        )
+
+  - id: "9.2.4"
+    level: 2
+    category: "Server Communications Security"
+    requirement: "Verify that proper certification revocation, such as Online Certificate Status Protocol (OCSP) Stapling, is enabled and configured."
+    cwe: "CWE-299"
+    description: |
+      Implement certificate revocation checking to detect compromised certificates.
+    implementation_guide: |
+      - Enable OCSP stapling on web server
+      - Check certificate revocation in client code
+      - Use short-lived certificates (Let's Encrypt)
+      - Monitor certificate expiration
+    code_examples:
+      - |
+        # Nginx - Enable OCSP stapling
+        # ssl_stapling on;
+        # ssl_stapling_verify on;
+        # ssl_trusted_certificate /path/to/chain.pem;
+
+  - id: "14.3.3"
+    level: 1
+    category: "Unintended Security Disclosure"
+    requirement: "Verify that sensitive information contained in memory is overwritten as soon as it is no longer required to mitigate memory dumping attacks, using zeroes or random data."
+    cwe: "CWE-316"
+    description: |
+      Sensitive data in memory (passwords, keys) should be cleared when no longer needed.
+    implementation_guide: |
+      - Clear sensitive variables after use
+      - Use memset or similar to zero memory
+      - Avoid string objects for passwords (use byte arrays)
+      - Use secure memory libraries when available
+    code_examples:
+      - |
+        # Python - Clear sensitive data
+        import ctypes
+        
+        def clear_memory(var):
+            """Attempt to clear sensitive data from memory."""
+            if isinstance(var, str):
+                # String objects are immutable in Python, use bytes instead
+                pass
+            elif isinstance(var, bytearray):
+                # Clear bytearray
+                for i in range(len(var)):
+                    var[i] = 0
+        
+        # Better: use bytearray for sensitive data
+        password = bytearray(b'secret123')
+        # ... use password ...
+        # Clear when done
+        for i in range(len(password)):
+            password[i] = 0
+

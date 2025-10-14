@@ -1,0 +1,289 @@
+# OWASP ASVS v4.0 - Chapter 2: Authentication
+# https://github.com/OWASP/ASVS
+
+requirements:
+  - id: "2.1.1"
+    level: 1
+    category: "Password Security"
+    requirement: "Verify that user set passwords are at least 12 characters in length."
+    cwe: "CWE-521"
+    description: |
+      Passwords should be sufficiently long to resist brute force attacks.
+      12 characters is the minimum recommended length as of 2024.
+      Longer passwords (15+ characters) are even better.
+    implementation_guide: |
+      - Add validation during user registration and password change
+      - Reject passwords shorter than 12 characters
+      - Display helpful error message to user
+      - Consider allowing longer passwords (64+ chars) for better security
+      - Don't set maximum length below 64 characters
+    code_examples:
+      - |
+        # Python
+        def validate_password_length(password: str) -> bool:
+            if len(password) < 12:
+                raise ValueError("Password must be at least 12 characters")
+            return True
+      - |
+        // JavaScript
+        function validatePasswordLength(password) {
+          if (password.length < 12) {
+            throw new Error("Password must be at least 12 characters");
+          }
+          return true;
+        }
+      - |
+        // Java
+        public boolean validatePasswordLength(String password) {
+            if (password.length() < 12) {
+                throw new IllegalArgumentException("Password must be at least 12 characters");
+            }
+            return true;
+        }
+
+  - id: "2.1.7"
+    level: 1
+    category: "Password Security"
+    requirement: "Verify that passwords submitted during account registration, login, and password change are checked against a set of breached passwords either locally or via an API."
+    cwe: "CWE-521"
+    description: |
+      Use services like HaveIBeenPwned to check if password appears in known breaches.
+      This prevents users from choosing passwords that are already compromised.
+    implementation_guide: |
+      - Integrate with HaveIBeenPwned API using k-anonymity model
+      - Check password against local breached password database
+      - Warn users if password is compromised
+      - Force password change if found in breach database
+      - Use k-anonymity to protect user privacy (send only first 5 chars of hash)
+    code_examples:
+      - |
+        # Python with pwnedpasswords library
+        import pwnedpasswords
+        
+        def is_password_breached(password: str) -> bool:
+            """Check if password appears in breach database."""
+            count = pwnedpasswords.check(password)
+            return count > 0
+            
+        # Usage in registration:
+        if is_password_breached(new_password):
+            raise ValueError("This password has been compromised in a data breach")
+      - |
+        // JavaScript with hibp library
+        const hibp = require('hibp');
+        
+        async function isPasswordBreached(password) {
+          const breaches = await hibp.pwnedPassword(password);
+          return breaches > 0;
+        }
+
+  - id: "2.1.9"
+    level: 2
+    category: "Password Security"
+    requirement: "Verify that there are no password composition rules limiting the type of characters permitted. There should be no requirement for upper or lower case or numbers or special characters."
+    cwe: "CWE-521"
+    description: |
+      Modern password guidance recommends against complex composition rules.
+      These rules don't significantly improve security but make passwords
+      harder to remember, leading to worse practices like password reuse.
+      Focus on length instead of complexity.
+    implementation_guide: |
+      - Remove requirements for specific character types
+      - Allow any printable characters including spaces
+      - Focus on minimum length (12+ chars) instead
+      - Allow passphrases like "correct horse battery staple"
+      - Don't force periodic password changes without reason
+    code_examples:
+      - |
+        # Python - GOOD (length-based)
+        def validate_password(password: str) -> bool:
+            return len(password) >= 12
+        
+        # Python - BAD (composition rules)
+        def validate_password_bad(password: str) -> bool:
+            has_upper = any(c.isupper() for c in password)
+            has_lower = any(c.islower() for c in password)
+            has_digit = any(c.isdigit() for c in password)
+            has_special = any(c in "!@#$%^&*()" for c in password)
+            return all([has_upper, has_lower, has_digit, has_special])  # DON'T DO THIS
+
+  - id: "2.2.1"
+    level: 1
+    category: "General Authenticator Security"
+    requirement: "Verify that anti-automation controls are effective at mitigating breached credential testing, brute force, and account lockout attacks."
+    cwe: "CWE-307"
+    description: |
+      Implement rate limiting and account lockout to prevent automated attacks.
+      This protects against credential stuffing and brute force attempts.
+    implementation_guide: |
+      - Implement exponential backoff after failed login attempts
+      - Add CAPTCHA after 3-5 failed attempts
+      - Use rate limiting (e.g., max 5 attempts per 15 minutes)
+      - Consider temporary account lockout after 10 failed attempts
+      - Log and monitor failed login attempts
+      - Use IP-based rate limiting with caution (consider shared IPs)
+    code_examples:
+      - |
+        # Python with Flask-Limiter
+        from flask_limiter import Limiter
+        from flask_limiter.util import get_remote_address
+        
+        limiter = Limiter(
+            app,
+            key_func=get_remote_address,
+            default_limits=["200 per day", "50 per hour"]
+        )
+        
+        @app.route("/login", methods=["POST"])
+        @limiter.limit("5 per 15 minutes")
+        def login():
+            # Login logic here
+            pass
+
+  - id: "2.3.1"
+    level: 1
+    category: "Authenticator Lifecycle"
+    requirement: "Verify system generated initial passwords or activation codes SHOULD be securely randomly generated, SHOULD be at least 6 characters long, and MAY contain letters and numbers, and expire after a short period of time."
+    cwe: "CWE-330"
+    description: |
+      Initial passwords and activation codes must be cryptographically random
+      to prevent prediction attacks. They should also expire quickly.
+    implementation_guide: |
+      - Use cryptographically secure random number generator
+      - Generate at least 6 characters (preferably 8-10)
+      - Include letters and numbers
+      - Set expiration time (e.g., 24 hours for email verification)
+      - Invalidate after first use
+      - Send over secure channel (HTTPS email link, not plain text)
+    code_examples:
+      - |
+        # Python
+        import secrets
+        import string
+        
+        def generate_activation_code(length: int = 8) -> str:
+            """Generate cryptographically secure activation code."""
+            alphabet = string.ascii_letters + string.digits
+            return ''.join(secrets.choice(alphabet) for _ in range(length))
+        
+        # Or for a simpler numeric code:
+        def generate_numeric_code(length: int = 6) -> str:
+            """Generate cryptographically secure numeric code."""
+            return ''.join(str(secrets.randbelow(10)) for _ in range(length))
+
+  - id: "2.5.2"
+    level: 1
+    category: "Credential Recovery"
+    requirement: "Verify password hints or knowledge-based authentication (so-called 'secret questions') are not present."
+    cwe: "CWE-640"
+    description: |
+      Password hints and security questions are inherently weak.
+      They're often easy to guess or find through social engineering.
+      Use proper password reset mechanisms instead.
+    implementation_guide: |
+      - Remove password hints feature entirely
+      - Remove security questions
+      - Use email-based password reset with secure tokens
+      - Consider multi-factor authentication for password reset
+      - Use time-limited, single-use reset tokens
+    code_examples:
+      - |
+        # Python - GOOD password reset flow
+        import secrets
+        from datetime import datetime, timedelta
+        
+        def initiate_password_reset(email: str) -> str:
+            """Generate secure password reset token."""
+            token = secrets.token_urlsafe(32)
+            expiry = datetime.utcnow() + timedelta(hours=1)
+            
+            # Store token with expiry in database
+            store_reset_token(email, token, expiry)
+            
+            # Send email with reset link
+            reset_url = f"https://example.com/reset?token={token}"
+            send_email(email, f"Reset link: {reset_url}")
+            
+            return token
+
+  - id: "2.7.1"
+    level: 1
+    category: "Out of Band Verifier"
+    requirement: "Verify that clear text out of band (NIST 'restricted') authenticators, such as SMS or PSTN, are not offered by default, and stronger alternatives such as push notifications are offered first."
+    cwe: "CWE-287"
+    description: |
+      SMS and phone calls are weak authentication methods due to SIM swapping,
+      SS7 vulnerabilities, and lack of encryption. Use app-based methods first.
+    implementation_guide: |
+      - Prioritize authenticator apps (TOTP) over SMS
+      - Offer push notifications (like Duo, Auth0 Guardian)
+      - Only fall back to SMS if user has no other option
+      - Warn users about SMS security limitations
+      - Consider hardware tokens (WebAuthn, U2F)
+    code_examples:
+      - |
+        # Python - Implementing TOTP
+        import pyotp
+        
+        def setup_totp(username: str) -> tuple[str, str]:
+            """Set up TOTP for user."""
+            secret = pyotp.random_base32()
+            totp = pyotp.TOTP(secret)
+            
+            # Generate QR code URI for authenticator apps
+            uri = totp.provisioning_uri(
+                name=username,
+                issuer_name="YourApp"
+            )
+            
+            return secret, uri
+        
+        def verify_totp(secret: str, token: str) -> bool:
+            """Verify TOTP token."""
+            totp = pyotp.TOTP(secret)
+            return totp.verify(token, valid_window=1)
+
+  - id: "2.8.1"
+    level: 1
+    category: "Single or Multi Factor One Time Verifier"
+    requirement: "Verify that time-based OTPs have a defined lifetime before expiring."
+    cwe: "CWE-613"
+    description: |
+      One-time passwords must expire to limit the window of opportunity
+      for an attacker who intercepts them.
+    implementation_guide: |
+      - Set OTP expiration time (typically 30-60 seconds for TOTP)
+      - Set longer expiration for email codes (5-15 minutes)
+      - Invalidate OTP after successful use
+      - Track and limit OTP verification attempts
+    code_examples:
+      - |
+        # Python
+        import time
+        from datetime import datetime, timedelta
+        
+        class OTPManager:
+            def generate_otp(self, user_id: str) -> tuple[str, datetime]:
+                """Generate OTP with expiration."""
+                code = secrets.token_hex(3)  # 6-character hex code
+                expiry = datetime.utcnow() + timedelta(minutes=5)
+                
+                # Store in database
+                store_otp(user_id, code, expiry)
+                
+                return code, expiry
+            
+            def verify_otp(self, user_id: str, code: str) -> bool:
+                """Verify OTP hasn't expired."""
+                stored_code, expiry = get_otp(user_id)
+                
+                if datetime.utcnow() > expiry:
+                    return False
+                
+                if stored_code != code:
+                    return False
+                
+                # Invalidate after use
+                delete_otp(user_id)
+                return True
+

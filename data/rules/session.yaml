@@ -1,0 +1,145 @@
+rules:
+  - id: asvs-3-4-1-missing-secure-flag
+    patterns:
+      - pattern-either:
+          - pattern: response.set_cookie(..., secure=False, ...)
+          - pattern: |
+              response.set_cookie($NAME, $VALUE)
+      - pattern-not: response.set_cookie(..., secure=True, ...)
+    message: |
+      ASVS 3.4.1: Session cookie missing Secure flag.
+      The Secure flag ensures cookies are only sent over HTTPS.
+      Always set secure=True for session cookies in production.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: missing_secure_flag
+      asvs_id: "3.4.1"
+      asvs_level: 1
+      category: session_management
+      cwe: "CWE-614"
+      owasp: "A05:2021 - Security Misconfiguration"
+      remediation: "Set secure=True on all session cookies"
+
+  - id: asvs-3-4-2-missing-httponly
+    patterns:
+      - pattern-either:
+          - pattern: response.set_cookie(..., httponly=False, ...)
+          - pattern: |
+              response.set_cookie($NAME, $VALUE)
+      - pattern-not: response.set_cookie(..., httponly=True, ...)
+    message: |
+      ASVS 3.4.2: Session cookie missing HttpOnly flag.
+      HttpOnly prevents JavaScript from accessing cookies, mitigating XSS.
+      Always set httponly=True for session cookies.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: missing_httponly
+      asvs_id: "3.4.2"
+      asvs_level: 1
+      category: session_management
+      cwe: "CWE-1004"
+      owasp: "A05:2021 - Security Misconfiguration"
+      remediation: "Set httponly=True on all session cookies"
+
+  - id: asvs-3-4-5-missing-samesite
+    patterns:
+      - pattern: |
+          response.set_cookie($NAME, $VALUE)
+      - pattern-not: response.set_cookie(..., samesite=..., ...)
+    message: |
+      ASVS 3.4.5: Session cookie missing SameSite attribute.
+      SameSite attribute provides CSRF protection.
+      Set samesite='Lax' or 'Strict' for session cookies.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      vulnerability: missing_samesite
+      asvs_id: "3.4.5"
+      asvs_level: 1
+      category: session_management
+      cwe: "CWE-352"
+      owasp: "A01:2021 - Broken Access Control"
+      remediation: "Set samesite='Lax' on session cookies"
+
+  - id: asvs-3-2-1-no-session-regeneration
+    patterns:
+      - pattern: |
+          @app.route("/.../login", ...)
+          def $FUNC(...):
+            ...
+            session[$KEY] = $VALUE
+            ...
+      - pattern-not-inside: |
+          @app.route("/.../login", ...)
+          def $FUNC(...):
+            ...
+            session.regenerate()
+            ...
+      - pattern-not-inside: |
+          @app.route("/.../login", ...)
+          def $FUNC(...):
+            ...
+            session.clear()
+            ...
+    message: |
+      ASVS 3.2.1: Session not regenerated on login.
+      Generate a new session ID after authentication to prevent session fixation.
+      Call session.regenerate() or session.clear() after successful login.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      vulnerability: session_fixation
+      asvs_id: "3.2.1"
+      asvs_level: 1
+      category: session_management
+      cwe: "CWE-384"
+      remediation: |
+        After successful login:
+        session.clear()
+        session['user_id'] = user_id
+
+  - id: asvs-3-1-1-session-in-url
+    patterns:
+      - pattern-either:
+          - pattern: redirect(f"...?session={...}")
+          - pattern: redirect("...?sessionid=...")
+          - pattern: redirect("...?token=...")
+    message: |
+      ASVS 3.1.1: Session token in URL parameter.
+      Session tokens should never be in URLs (logged in history, referrer headers).
+      Use cookies or HTTP headers for session management.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      vulnerability: session_in_url
+      asvs_id: "3.1.1"
+      asvs_level: 1
+      category: session_management
+      cwe: "CWE-598"
+      remediation: "Use secure session cookies instead of URL parameters"
+
+  - id: asvs-3-2-2-weak-session-token
+    patterns:
+      - pattern-either:
+          - pattern: session_id = str($NUM)
+          - pattern: session_id = $UUID.uuid1()
+          - pattern: token = random.randint(...)
+    message: |
+      ASVS 3.2.2: Weak session token generation.
+      Session tokens must have at least 64 bits of cryptographic entropy.
+      Use secrets.token_urlsafe() or secrets.token_hex().
+    severity: ERROR
+    languages: [python]
+    metadata:
+      vulnerability: weak_session
+      asvs_id: "3.2.2"
+      asvs_level: 1
+      category: session_management
+      cwe: "CWE-331"
+      remediation: |
+        Generate secure tokens:
+        import secrets
+        session_id = secrets.token_urlsafe(32)
+

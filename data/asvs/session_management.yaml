@@ -1,0 +1,274 @@
+# OWASP ASVS v4.0 - Chapter 3: Session Management
+
+requirements:
+  - id: "3.1.1"
+    level: 1
+    category: "Fundamental Session Management"
+    requirement: "Verify the application never reveals session tokens in URL parameters or error messages."
+    cwe: "CWE-598"
+    description: |
+      Session tokens in URLs can be logged in browser history, proxy logs,
+      and referrer headers, exposing them to attackers.
+    implementation_guide: |
+      - Always use cookies or HTTP headers for session tokens
+      - Never pass session IDs as URL parameters (?sessionid=xxx)
+      - Use HTTP-only cookies to prevent JavaScript access
+      - Ensure error messages don't include session tokens
+      - Review all logging to ensure sessions aren't logged
+    code_examples:
+      - |
+        # Python Flask - GOOD
+        from flask import session
+        
+        @app.route('/dashboard')
+        def dashboard():
+            user_id = session.get('user_id')  # Session in cookie
+            if not user_id:
+                return redirect('/login')
+            return render_template('dashboard.html')
+        
+        # BAD - Don't do this!
+        @app.route('/dashboard')
+        def dashboard_bad():
+            session_id = request.args.get('session')  # NEVER DO THIS
+            # ...
+
+  - id: "3.2.1"
+    level: 1
+    category: "Session Binding"
+    requirement: "Verify the application generates a new session token on user authentication."
+    cwe: "CWE-384"
+    description: |
+      Generate a new session ID after successful login to prevent session fixation attacks.
+      This ensures any pre-existing session cannot be hijacked.
+    implementation_guide: |
+      - Generate new session ID immediately after successful authentication
+      - Invalidate the old session ID
+      - Regenerate session on privilege level changes
+      - Clear all session data and create fresh session
+    code_examples:
+      - |
+        # Python Flask
+        from flask import session
+        
+        @app.route('/login', methods=['POST'])
+        def login():
+            username = request.form['username']
+            password = request.form['password']
+            
+            if verify_credentials(username, password):
+                # Clear old session
+                session.clear()
+                
+                # Regenerate session ID
+                session.regenerate()
+                
+                # Set new session data
+                session['user_id'] = get_user_id(username)
+                session['authenticated'] = True
+                
+                return redirect('/dashboard')
+      - |
+        # Express.js
+        app.post('/login', (req, res) => {
+          const { username, password } = req.body;
+          
+          if (verifyCredentials(username, password)) {
+            // Regenerate session
+            req.session.regenerate((err) => {
+              if (err) return res.status(500).json({ error: 'Session error' });
+              
+              req.session.userId = getUserId(username);
+              req.session.authenticated = true;
+              res.redirect('/dashboard');
+            });
+          }
+        });
+
+  - id: "3.2.2"
+    level: 1
+    category: "Session Binding"
+    requirement: "Verify that session tokens possess at least 64 bits of entropy."
+    cwe: "CWE-331"
+    description: |
+      Session tokens must be cryptographically random with sufficient entropy
+      to prevent brute force attacks.
+    implementation_guide: |
+      - Use cryptographically secure random number generator
+      - Generate at least 64 bits (8 bytes) of entropy
+      - Recommended: 128 bits (16 bytes) or more
+      - Use framework's built-in session management (usually secure by default)
+    code_examples:
+      - |
+        # Python
+        import secrets
+        
+        def generate_session_token() -> str:
+            """Generate cryptographically secure session token with 128 bits entropy."""
+            return secrets.token_urlsafe(16)  # 16 bytes = 128 bits
+        
+        def generate_session_hex() -> str:
+            """Alternative: hex token with 128 bits entropy."""
+            return secrets.token_hex(16)  # 16 bytes = 32 hex chars
+
+  - id: "3.3.1"
+    level: 1
+    category: "Session Logout and Timeout"
+    requirement: "Verify that logout and expiration invalidate the session token, such that the back button or a downstream relying party does not resume an authenticated session."
+    cwe: "CWE-613"
+    description: |
+      When users log out, their session must be completely invalidated
+      server-side to prevent session reuse.
+    implementation_guide: |
+      - Delete session from server-side storage on logout
+      - Clear session cookie with proper flags
+      - Implement session timeout for inactive sessions
+      - Don't rely solely on client-side cookie deletion
+      - Redirect to login page after logout
+    code_examples:
+      - |
+        # Python Flask
+        @app.route('/logout', methods=['POST'])
+        def logout():
+            # Clear session server-side
+            session_id = session.get('session_id')
+            if session_id:
+                delete_session_from_database(session_id)
+            
+            # Clear session data
+            session.clear()
+            
+            # Clear cookie
+            response = make_response(redirect('/login'))
+            response.set_cookie('session', '', expires=0)
+            
+            return response
+
+  - id: "3.3.2"
+    level: 1
+    category: "Session Logout and Timeout"
+    requirement: "Verify that the application gives the option to terminate all other active sessions after a successful password change or account compromise."
+    cwe: "CWE-613"
+    description: |
+      Users should be able to terminate all active sessions, especially
+      after password change or suspected compromise.
+    implementation_guide: |
+      - Store all active sessions per user in database
+      - Provide UI to view active sessions
+      - Allow users to terminate individual or all sessions
+      - Automatically terminate other sessions on password change
+      - Show session details (device, location, last activity)
+    code_examples:
+      - |
+        # Python
+        def terminate_all_user_sessions(user_id: int, except_current: bool = True) -> int:
+            """Terminate all sessions for a user."""
+            current_session_id = session.get('session_id')
+            
+            # Get all user sessions
+            user_sessions = get_user_sessions(user_id)
+            
+            terminated = 0
+            for sess in user_sessions:
+                if except_current and sess.id == current_session_id:
+                    continue
+                    
+                # Delete from session store
+                delete_session(sess.id)
+                terminated += 1
+            
+            return terminated
+        
+        @app.route('/change-password', methods=['POST'])
+        def change_password():
+            user_id = session.get('user_id')
+            new_password = request.form['new_password']
+            
+            # Update password
+            update_user_password(user_id, new_password)
+            
+            # Terminate all other sessions
+            terminate_all_user_sessions(user_id, except_current=True)
+            
+            return jsonify({'message': 'Password changed, other sessions terminated'})
+
+  - id: "3.4.1"
+    level: 1
+    category: "Cookie-based Session Management"
+    requirement: "Verify that cookie-based session tokens have the 'Secure' attribute set."
+    cwe: "CWE-614"
+    description: |
+      The Secure flag ensures cookies are only sent over HTTPS,
+      preventing interception over unencrypted connections.
+    implementation_guide: |
+      - Set Secure flag on all session cookies
+      - Only allow cookies over HTTPS in production
+      - Configure web framework session settings
+      - Test that cookies aren't sent over HTTP
+    code_examples:
+      - |
+        # Python Flask
+        app.config['SESSION_COOKIE_SECURE'] = True
+        app.config['SESSION_COOKIE_HTTPONLY'] = True
+        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+      - |
+        # Express.js
+        app.use(session({
+          secret: process.env.SESSION_SECRET,
+          cookie: {
+            secure: true,      // Only send over HTTPS
+            httpOnly: true,    // Not accessible via JavaScript
+            sameSite: 'lax',   // CSRF protection
+            maxAge: 3600000    // 1 hour
+          }
+        }));
+
+  - id: "3.4.2"
+    level: 1
+    category: "Cookie-based Session Management"
+    requirement: "Verify that cookie-based session tokens have the 'HttpOnly' attribute set."
+    cwe: "CWE-1004"
+    description: |
+      The HttpOnly flag prevents JavaScript from accessing the cookie,
+      mitigating XSS attacks that attempt to steal session tokens.
+    implementation_guide: |
+      - Set HttpOnly flag on all session cookies
+      - This prevents document.cookie access in JavaScript
+      - Essential defense-in-depth against XSS
+      - Should be enabled by default in most frameworks
+    code_examples:
+      - |
+        # Python Flask
+        app.config['SESSION_COOKIE_HTTPONLY'] = True
+        
+        # Or set manually:
+        response = make_response(render_template('page.html'))
+        response.set_cookie(
+            'session',
+            session_token,
+            httponly=True,
+            secure=True,
+            samesite='Lax'
+        )
+
+  - id: "3.4.5"
+    level: 1
+    category: "Cookie-based Session Management"
+    requirement: "Verify that cookie-based session tokens utilize the 'SameSite' attribute to limit exposure to cross-site request forgery attacks."
+    cwe: "CWE-352"
+    description: |
+      SameSite attribute prevents cookies from being sent with cross-site requests,
+      providing CSRF protection.
+    implementation_guide: |
+      - Use SameSite=Lax for most applications (balances security and usability)
+      - Use SameSite=Strict for high-security applications (may break some flows)
+      - Don't use SameSite=None unless absolutely necessary (e.g., embedded iframes)
+      - Combine with CSRF tokens for defense-in-depth
+    code_examples:
+      - |
+        # Python Flask
+        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+        
+        # For high security:
+        app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
+
