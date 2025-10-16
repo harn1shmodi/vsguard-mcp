@@ -1,5 +1,7 @@
 # VSGuard MCP
 
+[![smithery badge](https://smithery.ai/badge/@harn1shmodi/vsguard)](https://smithery.ai/server/@harn1shmodi/vsguard)
+
 A production-ready Model Context Protocol (MCP) server that provides real-time OWASP ASVS security guidance and vulnerability scanning for AI coding agents.
 
 ## Overview
@@ -41,6 +43,14 @@ This MCP server integrates with Claude Desktop, Cursor, and other MCP-compatible
 - Python 3.11+
 - pip or Poetry
 - Semgrep (for scanning)
+
+### Installing via Smithery
+
+To install VSGuard automatically via [Smithery](https://smithery.ai/server/@harn1shmodi/vsguard):
+
+```bash
+npx -y @smithery/cli install @harn1shmodi/vsguard
+```
 
 ### Installation
 
@@ -397,4 +407,3 @@ For issues, questions, or contributions, please open an issue on GitHub.
 ---
 
 **Built with ❤️ for secure AI-assisted development**
-
