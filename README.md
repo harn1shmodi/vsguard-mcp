@@ -104,14 +104,14 @@ check_security_requirements(
 ## Level 1 Requirements (8)
 
 ### 2.1.1: Password Security
-**Requirement:** Verify that user set passwords are at least 12 characters in length.
+Requirement: Verify that user set passwords are at least 12 characters in length.
 
-**Implementation Guide:**
+Implementation Guide:
 - Add validation during user registration and password change
 - Reject passwords shorter than 12 characters
 - Consider allowing longer passwords (64+ chars)
 
-**Code Example:**
+Code Example:
 ```python
 def validate_password_length(password: str) -> bool:
     if len(password) < 12:
