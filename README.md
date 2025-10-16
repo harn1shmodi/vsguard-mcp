@@ -1,19 +1,17 @@
-# VSGuard MCP - Vulnerability Scanner & Guard
+# VSGuard MCP
 
 A production-ready Model Context Protocol (MCP) server that provides real-time OWASP ASVS security guidance and vulnerability scanning for AI coding agents.
 
-**VSGuard = Vulnerability Scanner + Guard** - Powered by FastMCP 2.0
-
-## 🎯 Overview
+## Overview
 
 This MCP server integrates with Claude Desktop, Cursor, and other MCP-compatible tools to enable **proactive security during code generation**. It helps AI agents write secure code from the start by providing:
 
-- 📋 **OWASP ASVS Requirements** - Real-time security guidance based on ASVS v4.0
-- 🔍 **Vulnerability Scanning** - Static analysis using Semgrep with custom ASVS rules
-- 🛠️ **Secure Code Fixes** - Actionable remediation with code examples
-- 🤖 **LLM-Optimized Output** - Formatted for maximum comprehension by AI agents
+- **OWASP ASVS Requirements** - Real-time security guidance based on ASVS v4.0
+- **Vulnerability Scanning** - Static analysis using Semgrep with custom ASVS rules
+- **Secure Code Fixes** - Actionable remediation with code examples
+- **LLM-Optimized Output** - Formatted for maximum comprehension by AI agents
 
-## ✨ Features
+## Features
 
 ### Three Core Tools
 
@@ -36,7 +34,7 @@ This MCP server integrates with Claude Desktop, Cursor, and other MCP-compatible
 - JavaScript/TypeScript
 - Java, Go, Ruby, PHP, C/C++, C#, Rust (via Semgrep)
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -56,9 +54,6 @@ pip install -e .
 
 # Or with Poetry
 poetry install
-
-# Install Semgrep
-pip install semgrep
 ```
 
 ### Running the Server
@@ -66,12 +61,6 @@ pip install semgrep
 ```bash
 # Run directly with FastMCP
 python src/server.py
-
-# Or use FastMCP CLI
-fastmcp run src/server.py
-
-# Or with Poetry
-poetry run python src/server.py
 ```
 
 ### Configure Claude Desktop
@@ -89,41 +78,15 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-Or with Poetry:
-
-```json
-{
-  "mcpServers": {
-    "vsguard": {
-      "command": "poetry",
-      "args": ["run", "python", "/absolute/path/to/vsguard-mcp/src/server.py"]
-    }
-  }
-}
-```
-
-Or use FastMCP CLI (simplest):
-
-```json
-{
-  "mcpServers": {
-    "vsguard": {
-      "command": "fastmcp",
-      "args": ["run", "/absolute/path/to/vsguard-mcp/src/server.py"]
-    }
-  }
-}
-```
-
 Restart Claude Desktop to load the server.
 
-## 📖 Usage Examples
+## Usage Examples
 
-### Example 1: Get Security Requirements
+### Example 1: Get Security Requirements during code generation
 
 **In Claude Desktop:**
 ```
-I need to create a user login endpoint. What security requirements should I follow?
+Create a user login endpoint, follow asvs requirements.
 ```
 
 **Claude will call:**
@@ -156,18 +119,11 @@ def validate_password_length(password: str) -> bool:
     return True
 ```
 
-[... more requirements ...]
-```
-
-### Example 2: Scan Code for Vulnerabilities
+### Example 2: Scan Existing Code for Vulnerabilities
 
 **In Claude Desktop:**
 ```
-Can you check this code for security issues?
-
-def login(username, password):
-    query = f"SELECT * FROM users WHERE username = '{username}'"
-    cursor.execute(query)
+Can you check the login logic code for security issues?
 ```
 
 **Claude will call:**
@@ -182,36 +138,32 @@ scan_code(
 
 **Response:**
 ```markdown
-❌ **SCAN FAILED**
+❌ SCAN FAILED
 
-**Total Findings:** 1
-- 🟠 **HIGH:** 1
+Total Findings: 1
+- 🟠 HIGH: 1
 
-**ASVS Requirements Violated:** 5.3.4, 5.3.5
+ASVS Requirements Violated: 5.3.4, 5.3.5
 
 ## Detailed Findings
 
 ### 1. 🟠 SQL Injection
-**Severity:** HIGH
-**ASVS Requirements:** 5.3.4, 5.3.5
+Severity: HIGH
+ASVS Requirements: 5.3.4, 5.3.5
 
-**Issue:**
+Issue:
 SQL injection vulnerability detected. User input is concatenated directly into SQL query.
 
-**Location:** input.py:line 2
+Location: input.py:line 2
 
-**Vulnerable Code:**
-```python
+Vulnerable Code:
 query = f"SELECT * FROM users WHERE username = '{username}'"
-```
 
-**Remediation:**
+Remediation:
 Use parameterized queries with placeholders instead of string concatenation.
 
-**Example:**
-```python
+Example:
 cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
-```
 ```
 
 ### Example 3: Get Secure Code Fix
@@ -234,15 +186,12 @@ suggest_fix(
 ```markdown
 # Security Fix Suggestion
 
-**ASVS Requirements Addressed:** 5.3.4, 5.3.5
+ASVS Requirements Addressed 5.3.4, 5.3.5
 
 ## ❌ Vulnerable Code
-```python
 cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
-```
 
 ## ✅ Secure Code
-```python
 cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
 
 # Or with SQLAlchemy ORM:
@@ -251,56 +200,8 @@ stmt = select(User).where(User.username == username)
 user = session.execute(stmt).scalar_one_or_none()
 ```
 
-## 📝 Explanation
-Use parameterized queries (prepared statements) instead of string concatenation.
 
-## 🛡️ Security Benefits
-- Prevents SQL injection attacks
-- Separates code from data
-```
-
-## 🏗️ Project Structure
-
-```
-vsguard-mcp/
-├── src/
-│   ├── server.py              # MCP server entry point
-│   ├── config.py              # Configuration
-│   ├── models.py              # Pydantic data models
-│   │
-│   ├── asvs/
-│   │   ├── loader.py          # Load ASVS from YAML
-│   │   ├── mapper.py          # Map findings to ASVS
-│   │   └── requirements.py    # Requirement models
-│   │
-│   ├── scanners/
-│   │   ├── base.py            # Abstract scanner
-│   │   └── semgrep_scanner.py # Semgrep integration
-│   │
-│   ├── fixes/
-│   │   ├── generator.py       # Fix generator
-│   │   └── templates.py       # Fix templates
-│   │
-│   └── utils/
-│       └── formatters.py      # LLM-optimized formatting
-│
-├── data/
-│   ├── asvs/                  # ASVS requirements (YAML)
-│   │   ├── authentication.yaml
-│   │   ├── session_management.yaml
-│   │   ├── validation.yaml
-│   │   └── cryptography.yaml
-│   │
-│   └── rules/                 # Custom Semgrep rules
-│       ├── authentication.yaml
-│       ├── injection.yaml
-│       ├── cryptography.yaml
-│       └── session.yaml
-│
-└── tests/                     # Test suite
-```
-
-## ⚙️ Configuration
+## Configuration
 
 Create a `.env` file (optional):
 
@@ -317,7 +218,7 @@ MAX_CODE_SIZE=50000
 LOG_LEVEL=INFO
 ```
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run tests
@@ -330,7 +231,7 @@ pytest tests/test_asvs_loader.py
 pytest --cov=src tests/
 ```
 
-## 📊 Coverage
+## Coverage
 
 Current implementation includes:
 
@@ -351,7 +252,7 @@ Current implementation includes:
 - Command Injection (ASVS 5.3.4)
 - And more...
 
-## 🎓 How It Works
+## How It Works
 
 ### 1. ASVS Requirements Database
 
