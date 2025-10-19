@@ -1,9 +1,7 @@
 # VSGuard MCP - Security guardrails for AI coding agents
 
 [![smithery badge](https://smithery.ai/badge/@harn1shmodi/vsguard)](https://smithery.ai/server/@harn1shmodi/vsguard)
-[![MCP](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io)
 [![ASVS](https://img.shields.io/badge/OWASP-ASVS%204.0-red)](https://owasp.org/www-project-application-security-verification-standard/)
-[![OWASP LLM](https://img.shields.io/badge/OWASP-LLM%20Top%2010-red)](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 ![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat)
 
