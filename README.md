@@ -1,18 +1,22 @@
-# VSGuard MCP
+# VSGuard MCP - Security guardrails for AI coding agents
 
 [![smithery badge](https://smithery.ai/badge/@harn1shmodi/vsguard)](https://smithery.ai/server/@harn1shmodi/vsguard)
+[![MCP](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io)
+[![ASVS](https://img.shields.io/badge/OWASP-ASVS%204.0-red)](https://owasp.org/www-project-application-security-verification-standard/)
+[![OWASP LLM](https://img.shields.io/badge/OWASP-LLM%20Top%2010-red)](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat)
 
-A production-ready Model Context Protocol (MCP) server that provides real-time OWASP ASVS security guidance and vulnerability scanning for AI coding agents.
+VSGuard is the first MCP server that makes security automatic for AI-assisted development. It integrates OWASP ASVS and OWASP LLM Top 10 standards directly into your AI coding workflow, catching SQL injections, prompt injections, weak authentication, and 50+ other vulnerabilities as you code—not after deployment.
 
 ## Overview
 
-This MCP server integrates with Claude Desktop, Cursor, and other MCP-compatible tools to enable **proactive security during code generation**. It helps AI agents write secure code from the start by providing:
+This MCP server integrates with Claude Code, Cursor, and other MCP-clients to enable **proactive security during code generation**. It helps AI agents write secure code from the start by providing:
 
 - **OWASP ASVS Requirements** - Real-time security guidance based on ASVS v4.0
 - **Vulnerability Scanning** - Static analysis using Semgrep with custom ASVS rules
 - **Secure Code Fixes** - Actionable remediation with code examples
-- **LLM-Optimized Output** - Formatted for maximum comprehension by AI agents
-
+  
 ## Features
 
 ### Three Core Tools
@@ -38,13 +42,19 @@ This MCP server integrates with Claude Desktop, Cursor, and other MCP-compatible
 
 ## Quick Start
 
-### Prerequisites
+Works with Cursor and Claude Code! Use the HTTP-based configuration format:
+```json
+{
+  "mcpServers": {
+    "vsguard": {
+      "type": "http",
+      "url": "https://vsguard.fastmcp.app/mcp"
+    }
+  }
+}
+```
 
-- Python 3.11+
-- pip or Poetry
-- Semgrep (for scanning)
-
-### Installing via Smithery
+### If you prefer Smithery
 
 To install VSGuard automatically via [Smithery](https://smithery.ai/server/@harn1shmodi/vsguard):
 
@@ -52,7 +62,7 @@ To install VSGuard automatically via [Smithery](https://smithery.ai/server/@harn
 npx -y @smithery/cli install @harn1shmodi/vsguard
 ```
 
-### Installation
+### If you prefer remote installation
 
 ```bash
 # Clone repository
@@ -61,21 +71,9 @@ cd vsguard-mcp
 
 # Install dependencies
 pip install -e .
-
-# Or with Poetry
-poetry install
 ```
 
-### Running the Server
-
-```bash
-# Run directly with FastMCP
-python src/server.py
-```
-
-### Configure Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+### Configure the mcp.json for Claude Code/Cursor
 
 ```json
 {
@@ -87,8 +85,6 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   }
 }
 ```
-
-Restart Claude Desktop to load the server.
 
 ## Usage Examples
 
@@ -208,24 +204,6 @@ cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
 from sqlalchemy import select
 stmt = select(User).where(User.username == username)
 user = session.execute(stmt).scalar_one_or_none()
-```
-
-
-## Configuration
-
-Create a `.env` file (optional):
-
-```env
-# ASVS settings
-MIN_ASVS_LEVEL=1
-
-# Scanner settings
-ENABLE_SEMGREP=true
-SCAN_TIMEOUT=30
-MAX_CODE_SIZE=50000
-
-# Logging
-LOG_LEVEL=INFO
 ```
 
 ## Testing
