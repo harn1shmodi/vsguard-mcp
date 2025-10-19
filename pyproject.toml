@@ -42,7 +42,19 @@ playground = "smithery.cli.playground:main"
 server = "src.server:create_server"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["src", "data"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/data",
+    "/tests",
+]
+
+# Ensure data files are included in the package
+[tool.hatch.build.force-include]
+"data/asvs" = "data/asvs"
+"data/rules" = "data/rules"
 
 [tool.black]
 line-length = 100

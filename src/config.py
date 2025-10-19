@@ -1,19 +1,14 @@
 """Configuration management for ASVS MCP Server."""
 
-import os
 from pathlib import Path
-from typing import Optional
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Import data package paths
+import data
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
-
-    # Paths
-    asvs_data_dir: str = "data/asvs"
-    rules_dir: str = "data/rules"
-    fixes_dir: str = "data/fixes"
 
     # Scanner settings
     enable_semgrep: bool = True
@@ -21,36 +16,31 @@ class Settings(BaseSettings):
     enable_secrets: bool = True
 
     # ASVS settings
-    min_asvs_level: int = 1  # Only check Level 1 by default
+    min_asvs_level: int = 1
 
     # Performance
-    max_code_size: int = 50000  # Max characters to scan
-    scan_timeout: int = 30  # Seconds
+    max_code_size: int = 50000
+    scan_timeout: int = 30
 
     # Logging
     log_level: str = "INFO"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    def get_absolute_path(self, relative_path: str) -> Path:
-        """Convert relative path to absolute path from project root."""
-        project_root = Path(__file__).parent.parent
-        return project_root / relative_path
-
     @property
     def asvs_data_path(self) -> Path:
         """Get absolute path to ASVS data directory."""
-        return self.get_absolute_path(self.asvs_data_dir)
+        return data.ASVS_DIR
 
     @property
     def rules_path(self) -> Path:
         """Get absolute path to rules directory."""
-        return self.get_absolute_path(self.rules_dir)
+        return data.RULES_DIR
 
     @property
     def fixes_path(self) -> Path:
         """Get absolute path to fixes directory."""
-        return self.get_absolute_path(self.fixes_dir)
+        return data.DATA_DIR / "fixes"
 
 
 # Global settings instance

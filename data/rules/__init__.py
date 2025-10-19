@@ -1,0 +1,2 @@
+"""Semgrep security scanning rules."""
+
