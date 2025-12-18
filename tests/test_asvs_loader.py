@@ -29,10 +29,10 @@ class TestASVSLoader:
         loader = ASVSLoader()
         collection = loader.load()
 
-        # Get specific requirement
-        req = collection.get_by_id("2.1.1")
+        # Get specific requirement (using V format from ASVS 5.0)
+        req = collection.get_by_id("V6.2.1")
         assert req is not None
-        assert req.id == "2.1.1"
+        assert req.id == "V6.2.1"
         assert "password" in req.requirement.lower()
         assert req.level == 1
 
@@ -70,26 +70,24 @@ class TestASVSLoader:
         assert len(results) > 0
 
         for req in results:
-            text = f"{req.requirement} {req.description}".lower()
+            text = f"{req.requirement} {req.category} {req.chapter}".lower()
             assert "sql" in text or "injection" in text
 
-    def test_requirement_has_code_examples(self):
-        """Test that requirements have code examples."""
+    def test_requirement_has_required_fields(self):
+        """Test that requirements have all required fields from ASVS 5.0."""
         loader = ASVSLoader()
         collection = loader.load()
 
-        req = collection.get_by_id("2.1.1")
+        req = collection.get_by_id("V6.2.1")
         assert req is not None
-        assert len(req.code_examples) > 0
-
-    def test_requirement_has_implementation_guide(self):
-        """Test that requirements have implementation guides."""
-        loader = ASVSLoader()
-        collection = loader.load()
-
-        req = collection.get_by_id("2.1.1")
-        assert req is not None
-        assert len(req.implementation_guide) > 0
+        assert req.id == "V6.2.1"
+        assert req.requirement is not None and len(req.requirement) > 0
+        assert req.category is not None and len(req.category) > 0
+        assert req.chapter is not None and len(req.chapter) > 0
+        assert req.level in [1, 2, 3]
+        # CWE is optional
+        # tags should be present
+        assert isinstance(req.tags, list)
 
     def test_caching(self):
         """Test that requirements are cached."""

@@ -18,7 +18,7 @@ rules:
     languages: [python, javascript, typescript]
     metadata:
       vulnerability: weak_password
-      asvs_id: "2.1.1"
+      asvs_id: "V6.2.1"
       asvs_level: 1
       category: authentication
       cwe: "CWE-521"
@@ -39,7 +39,7 @@ rules:
     languages: [python]
     metadata:
       vulnerability: weak_password_hash
-      asvs_id: "9.2.1"
+      asvs_id: "V11.4.2"
       asvs_level: 1
       category: cryptography
       cwe: "CWE-916"
@@ -66,7 +66,7 @@ rules:
     languages: [python, javascript, typescript, java, go]
     metadata:
       vulnerability: hardcoded_password
-      asvs_id: "2.3.1"
+      asvs_id: "V6.4.1"
       asvs_level: 1
       category: authentication
       cwe: "CWE-798"
@@ -100,7 +100,7 @@ rules:
     languages: [python]
     metadata:
       vulnerability: no_rate_limiting
-      asvs_id: "2.2.1"
+      asvs_id: "V6.3.1"
       asvs_level: 1
       category: authentication
       cwe: "CWE-307"
@@ -125,7 +125,7 @@ rules:
     languages: [python, javascript, typescript]
     metadata:
       vulnerability: weak_2fa
-      asvs_id: "2.7.1"
+      asvs_id: "V6.6.1"
       asvs_level: 1
       category: authentication
       cwe: "CWE-287"
@@ -148,7 +148,7 @@ rules:
     languages: [python, javascript, typescript, java]
     metadata:
       vulnerability: weak_password
-      asvs_id: "2.5.2"
+      asvs_id: "V6.4.2"
       asvs_level: 1
       category: authentication
       cwe: "CWE-640"

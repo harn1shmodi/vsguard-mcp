@@ -56,23 +56,15 @@ def format_security_requirements(
 
         for req in level_reqs:
             output.append(f"### {req.id}: {req.category}")
+            output.append(f"**Chapter:** {req.chapter}")
             output.append(f"**Requirement:** {req.requirement}\n")
 
             if req.cwe:
-                output.append(f"**CWE Mapping:** {req.cwe}")
+                cwe_str = ", ".join(req.cwe) if isinstance(req.cwe, list) else str(req.cwe)
+                output.append(f"**CWE Mapping:** {cwe_str}")
 
-            output.append(f"**Description:**")
-            output.append(req.description)
-
-            output.append(f"\n**Implementation Guide:**")
-            output.append(req.implementation_guide)
-
-            if include_examples and req.code_examples:
-                output.append(f"\n**Code Examples:**")
-                for i, example in enumerate(req.code_examples, 1):
-                    output.append(f"```")
-                    output.append(example.strip())
-                    output.append(f"```")
+            if req.tags:
+                output.append(f"**Tags:** {', '.join(req.tags)}")
 
             output.append("\n---\n")
 

@@ -13,7 +13,7 @@ rules:
     languages: [python]
     metadata:
       vulnerability: weak_cipher
-      asvs_id: "6.2.2"
+      asvs_id: "V11.3.1"
       asvs_level: 1
       category: cryptography
       cwe: "CWE-327"
@@ -37,7 +37,7 @@ rules:
     languages: [python]
     metadata:
       vulnerability: ecb_mode
-      asvs_id: "6.2.5"
+      asvs_id: "V11.3.1"
       asvs_level: 1
       category: cryptography
       cwe: "CWE-326"
@@ -59,7 +59,7 @@ rules:
     languages: [python, javascript, typescript]
     metadata:
       vulnerability: weak_crypto
-      asvs_id: "6.2.2"
+      asvs_id: "V11.3.1"
       asvs_level: 1
       category: cryptography
       cwe: "CWE-330"
@@ -80,7 +80,7 @@ rules:
     languages: [python, javascript, typescript]
     metadata:
       vulnerability: weak_hash
-      asvs_id: "6.2.2"
+      asvs_id: "V11.3.1"
       asvs_level: 1
       category: cryptography
       cwe: "CWE-327"
@@ -99,7 +99,7 @@ rules:
     languages: [python, javascript, typescript]
     metadata:
       vulnerability: weak_hash
-      asvs_id: "6.2.2"
+      asvs_id: "V11.3.1"
       asvs_level: 1
       category: cryptography
       cwe: "CWE-327"
@@ -127,7 +127,7 @@ rules:
     languages: [python, javascript, typescript, java, go]
     metadata:
       vulnerability: hardcoded_secret
-      asvs_id: "14.3.3"
+      asvs_id: "V14.3.3"
       asvs_level: 1
       category: data_protection
       cwe: "CWE-798"
@@ -148,7 +148,7 @@ rules:
     languages: [python]
     metadata:
       vulnerability: insecure_transport
-      asvs_id: "9.1.2"
+      asvs_id: "V12.2.1"
       asvs_level: 1
       category: communication
       cwe: "CWE-295"
@@ -169,7 +169,7 @@ rules:
     languages: [python]
     metadata:
       vulnerability: weak_crypto
-      asvs_id: "6.2.6"
+      asvs_id: "V11.3.4"
       asvs_level: 2
       category: cryptography
       cwe: "CWE-323"

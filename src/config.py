@@ -28,11 +28,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @property
-    def asvs_data_path(self) -> Path:
-        """Get absolute path to ASVS data directory."""
-        return data.ASVS_DIR
-
-    @property
     def rules_path(self) -> Path:
         """Get absolute path to rules directory."""
         return data.RULES_DIR

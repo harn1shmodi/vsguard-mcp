@@ -117,7 +117,7 @@ class FixGenerator:
 # 3. Defense-in-depth security controls
 
 # For specific guidance, use: check_security_requirements tool
-# with code_type related to {vulnerability_type}
+# with category or chapter related to {vulnerability_type}
 
 # Example resources:
 # - OWASP ASVS: https://owasp.org/www-project-application-security-verification-standard/
