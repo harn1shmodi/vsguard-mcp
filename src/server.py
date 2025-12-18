@@ -122,12 +122,12 @@ def check_security_requirements(
     context: Optional[str] = None,
 ) -> str:
     """
-    Get relevant OWASP ASVS 5.0 security requirements.
+    PRIMARY TOOL: Get relevant OWASP ASVS 5.0 security requirements.
     
     Search by category (most precise), chapter (broader), or free-text query.
     Use level filter to reduce results and token usage.
     
-    💡 TIP: Use 'list_asvs_categories' tool first to see available categories and chapters.
+    Always use the 'list_asvs_categories' tool first to see available categories and chapters.
     
     Args:
         category: ASVS category name (e.g., "Password Security")
@@ -172,14 +172,14 @@ def check_security_requirements(
                 levels_to_check = parsed_level if isinstance(parsed_level, list) else [parsed_level]
                 for lvl in levels_to_check:
                     if lvl not in [1, 2, 3]:
-                        return f"❌ Error: Invalid level '{lvl}'. Must be 1, 2, or 3."
+                        return f"Error: Invalid level '{lvl}'. Must be 1, 2, or 3."
             except ValueError:
-                return f"❌ Error: Invalid level format '{level}'. Use '1', '2', '3', or comma-separated like '1,2'."
+                return f"Error: Invalid level format '{level}'. Use '1', '2', '3', or comma-separated like '1,2'."
         
         # Validation
         if not any([category, chapter, query]):
             return (
-                "❌ Error: At least one of 'category', 'chapter', or 'query' must be provided.\n\n"
+                "Error: At least one of 'category', 'chapter', or 'query' must be provided.\n\n"
                 "Examples:\n"
                 "  • category='Password Security'\n"
                 "  • chapter='Authentication'\n"
@@ -187,7 +187,7 @@ def check_security_requirements(
             )
         
         if category and chapter:
-            return "❌ Error: 'category' and 'chapter' are mutually exclusive. Use one or the other."
+            return "Error: 'category' and 'chapter' are mutually exclusive. Use one or the other."
         
         logger.info(f"Checking requirements: category={category}, chapter={chapter}, query={query}, level={level}")
         
@@ -229,7 +229,7 @@ def check_security_requirements(
         if not unique_requirements:
             return (
                 f"No requirements found for {search_desc}.\n\n"
-                "💡 Tip: Try a broader search:\n"
+                "Try a broader search:\n"
                 f"  • Use chapter instead of category\n"
                 f"  • Use a different search term\n"
                 f"  • Check spelling of category/chapter name\n"
@@ -268,11 +268,10 @@ async def scan_code(
     context: Optional[str] = None,
 ) -> str:
     """
-    Scan code for security vulnerabilities using static analysis.
+    Scan code for security vulnerabilities using static analysis. Do not use this tool unless user explicitly asks to scan/audit existing code.
     
     Detects SQL injection, XSS, weak cryptography, hardcoded secrets, and more.
     Returns findings with severity, ASVS mappings, and remediation guidance.
-    Use this to VALIDATE code security after implementation.
     
     Args:
         code: The code to analyze
@@ -292,7 +291,7 @@ async def scan_code(
 
         if not SCANNERS_AVAILABLE:
             return (
-                "⚠️ **Scanner Not Yet Implemented**\n\n"
+                "**Scanner Not Yet Implemented**\n\n"
                 "The code scanner is being implemented. "
                 "For now, please use the 'check_security_requirements' tool "
                 "to understand security requirements before writing code.\n\n"
@@ -347,7 +346,7 @@ async def suggest_fix(
 
         if not SCANNERS_AVAILABLE:
             return (
-                "⚠️ **Fix Generator Not Yet Implemented**\n\n"
+                "**Fix Generator Not Yet Implemented**\n\n"
                 "The fix generator is being implemented. "
                 "For now, please refer to the code examples in the ASVS requirements.\n\n"
                 f"Vulnerability type: {vulnerability_type}\n"
@@ -384,14 +383,14 @@ async def suggest_fix(
 #     # Pre-load ASVS requirements
 #     try:
 #         collection = get_asvs_collection()
-#         logger.info(f"✅ Loaded {collection.count()} ASVS requirements")
+#         logger.info(f"Loaded {collection.count()} ASVS requirements")
 #         categories = collection.get_categories()
-#         logger.info(f"📋 Categories: {', '.join(categories)}")
+#         logger.info(f"Categories: {', '.join(categories)}")
 #     except Exception as e:
-#         logger.error(f"❌ Failed to load ASVS requirements: {e}", exc_info=True)
+#         logger.error(f"Failed to load ASVS requirements: {e}", exc_info=True)
 #         logger.error("Server will start but check_security_requirements will fail")
 
-#     logger.info("🚀 VSGuard MCP Server ready!")
+#     logger.info("VSGuard MCP Server ready!")
 
 
 # # Run startup
