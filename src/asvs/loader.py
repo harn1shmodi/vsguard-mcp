@@ -1,108 +1,132 @@
-"""Load ASVS requirements from YAML files."""
+"""Load ASVS requirements from official OWASP JSON files."""
 
+import json
 import logging
 from pathlib import Path
 from typing import Optional
 
-import yaml
+import data
 
-from ..config import settings
 from ..models import ASVSRequirement
 from .requirements import ASVSRequirementCollection
+from .utils import asvs_to_cwe_key, generate_tags
 
 logger = logging.getLogger(__name__)
 
 
 class ASVSLoader:
-    """Load and cache ASVS requirements from YAML files."""
+    """Load and cache ASVS requirements from official OWASP JSON."""
 
-    def __init__(self, data_dir: Optional[Path] = None) -> None:
+    def __init__(
+        self,
+        asvs_path: Optional[Path] = None,
+        cwe_mapping_path: Optional[Path] = None,
+    ) -> None:
         """
-        Initialize ASVS loader.
+        Initialize ASVS loader with official JSON files.
 
         Args:
-            data_dir: Directory containing ASVS YAML files (defaults to config setting)
+            asvs_path: Path to official ASVS JSON (defaults to data/asvs_official.json)
+            cwe_mapping_path: Path to CWE mapping JSON (defaults to data/ASVS 5.0 BE CWE Mapping.json)
         """
-        self.data_dir = data_dir or settings.asvs_data_path
+        self.asvs_path = asvs_path or (data.DATA_DIR / "asvs_official.json")
+        self.cwe_mapping_path = cwe_mapping_path or (data.DATA_DIR / "ASVS 5.0 BE CWE Mapping.json")
         self._collection: Optional[ASVSRequirementCollection] = None
 
     def load(self) -> ASVSRequirementCollection:
         """
-        Load all ASVS requirements from YAML files.
+        Load all ASVS requirements from official JSON files.
 
         Returns:
             Collection of ASVS requirements
 
         Raises:
-            FileNotFoundError: If data directory doesn't exist
-            ValueError: If YAML files are invalid
+            FileNotFoundError: If JSON files don't exist
+            ValueError: If JSON files are invalid
         """
         if self._collection is not None:
             logger.debug("Returning cached ASVS requirements")
             return self._collection
 
-        if not self.data_dir.exists():
-            raise FileNotFoundError(f"ASVS data directory not found: {self.data_dir}")
+        if not self.asvs_path.exists():
+            raise FileNotFoundError(f"ASVS official JSON not found: {self.asvs_path}")
 
-        logger.info(f"Loading ASVS requirements from {self.data_dir}")
+        if not self.cwe_mapping_path.exists():
+            raise FileNotFoundError(f"CWE mapping JSON not found: {self.cwe_mapping_path}")
+
+        logger.info(f"Loading ASVS requirements from {self.asvs_path}")
+
+        # Load official ASVS JSON
+        with open(self.asvs_path, "r", encoding="utf-8") as f:
+            asvs_data = json.load(f)
+
+        # Load official CWE mappings
+        with open(self.cwe_mapping_path, "r", encoding="utf-8") as f:
+            cwe_mappings = json.load(f)
+
+        # Parse requirements
         collection = ASVSRequirementCollection()
 
-        # Load all YAML files in the directory
-        yaml_files = sorted(self.data_dir.glob("*.yaml"))
-        if not yaml_files:
-            yaml_files = sorted(self.data_dir.glob("*.yml"))
+        for chapter in asvs_data.get("Requirements", []):
+            chapter_name = chapter.get("Name", "")
 
-        if not yaml_files:
-            raise FileNotFoundError(f"No YAML files found in {self.data_dir}")
+            for section in chapter.get("Items", []):
+                section_name = section.get("Name", "")
 
-        for yaml_file in yaml_files:
-            logger.debug(f"Loading {yaml_file.name}")
-            requirements = self._load_file(yaml_file)
-            for req in requirements:
-                collection.add(req)
+                for item in section.get("Items", []):
+                    try:
+                        requirement = self._parse_requirement(
+                            item, chapter_name, section_name, cwe_mappings
+                        )
+                        collection.add(requirement)
+                    except Exception as e:
+                        logger.error(f"Error parsing requirement {item.get('Shortcode')}: {e}")
+                        continue
 
-        logger.info(f"Loaded {collection.count()} ASVS requirements from {len(yaml_files)} files")
+        logger.info(f"Loaded {collection.count()} ASVS requirements from official JSON")
         self._collection = collection
         return collection
 
-    def _load_file(self, file_path: Path) -> list[ASVSRequirement]:
+    def _parse_requirement(
+        self,
+        item: dict,
+        chapter_name: str,
+        section_name: str,
+        cwe_mappings: dict,
+    ) -> ASVSRequirement:
         """
-        Load ASVS requirements from a single YAML file.
+        Parse a single requirement from official JSON.
 
         Args:
-            file_path: Path to YAML file
+            item: Requirement item from JSON
+            chapter_name: Parent chapter name
+            section_name: Parent section name
+            cwe_mappings: CWE mapping dictionary
 
         Returns:
-            List of ASVS requirements
-
-        Raises:
-            ValueError: If YAML is invalid or doesn't match expected schema
+            Parsed ASVS requirement
         """
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
+        req_id = item["Shortcode"]
+        level = int(item["L"])
+        description = item["Description"]
 
-            if not data or "requirements" not in data:
-                raise ValueError(f"Invalid ASVS file format: {file_path}")
+        # Map to CWE using official mapping
+        cwe_key = asvs_to_cwe_key(req_id)
+        cwe_id = cwe_mappings.get(cwe_key)
+        cwe_list = [f"CWE-{cwe_id}"] if cwe_id else None
 
-            requirements = []
-            for req_data in data["requirements"]:
-                try:
-                    # Validate and parse with Pydantic
-                    requirement = ASVSRequirement(**req_data)
-                    requirements.append(requirement)
-                except Exception as e:
-                    logger.error(f"Error parsing requirement in {file_path}: {e}")
-                    logger.debug(f"Invalid requirement data: {req_data}")
-                    # Continue loading other requirements
-                    continue
+        # Generate searchable tags
+        tags = generate_tags(chapter_name, section_name)
 
-            return requirements
-
-        except yaml.YAMLError as e:
-            raise ValueError(f"Invalid YAML in {file_path}: {e}")
-        except Exception as e:
-            raise ValueError(f"Error loading {file_path}: {e}")
+        return ASVSRequirement(
+            id=req_id,
+            level=level,
+            category=section_name,
+            chapter=chapter_name,
+            requirement=description,
+            cwe=cwe_list,
+            tags=tags,
+        )
 
     def reload(self) -> ASVSRequirementCollection:
         """Force reload of ASVS requirements from disk."""
@@ -133,4 +157,3 @@ def get_asvs_collection() -> ASVSRequirementCollection:
     """Get ASVS requirements collection (convenience function)."""
     loader = get_asvs_loader()
     return loader.get_collection()
-

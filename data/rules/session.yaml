@@ -14,7 +14,7 @@ rules:
     languages: [python]
     metadata:
       vulnerability: missing_secure_flag
-      asvs_id: "3.4.1"
+      asvs_id: "V3.3.1"
       asvs_level: 1
       category: session_management
       cwe: "CWE-614"
@@ -36,7 +36,7 @@ rules:
     languages: [python]
     metadata:
       vulnerability: missing_httponly
-      asvs_id: "3.4.2"
+      asvs_id: "V3.3.4"
       asvs_level: 1
       category: session_management
       cwe: "CWE-1004"
@@ -56,7 +56,7 @@ rules:
     languages: [python]
     metadata:
       vulnerability: missing_samesite
-      asvs_id: "3.4.5"
+      asvs_id: "V3.3.2"
       asvs_level: 1
       category: session_management
       cwe: "CWE-352"
@@ -91,7 +91,7 @@ rules:
     languages: [python]
     metadata:
       vulnerability: session_fixation
-      asvs_id: "3.2.1"
+      asvs_id: "V7.2.4"
       asvs_level: 1
       category: session_management
       cwe: "CWE-384"
@@ -114,7 +114,7 @@ rules:
     languages: [python, javascript, typescript]
     metadata:
       vulnerability: session_in_url
-      asvs_id: "3.1.1"
+      asvs_id: "V3.3.1"
       asvs_level: 1
       category: session_management
       cwe: "CWE-598"
@@ -134,7 +134,7 @@ rules:
     languages: [python]
     metadata:
       vulnerability: weak_session
-      asvs_id: "3.2.2"
+      asvs_id: "V7.2.3"
       asvs_level: 1
       category: session_management
       cwe: "CWE-331"

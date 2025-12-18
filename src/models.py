@@ -16,45 +16,32 @@ class SeverityLevel(str, Enum):
     INFO = "INFO"
 
 
-class CodeType(str, Enum):
-    """Types of code patterns for security requirement lookup."""
-
-    AUTHENTICATION = "authentication"
-    SESSION_MANAGEMENT = "session_management"
-    ACCESS_CONTROL = "access_control"
-    INPUT_VALIDATION = "input_validation"
-    CRYPTOGRAPHY = "cryptography"
-    ERROR_HANDLING = "error_handling"
-    DATA_PROTECTION = "data_protection"
-    COMMUNICATION = "communication"
-    MALICIOUS_CODE = "malicious_code"
+# CodeType enum removed in v2.0.0 - use direct category/chapter search instead
 
 
 class ASVSRequirement(BaseModel):
-    """Represents a single OWASP ASVS security requirement."""
+    """Represents a single OWASP ASVS 5.0 security requirement from official JSON."""
 
-    id: str = Field(..., description="ASVS requirement ID (e.g., '2.1.1')")
+    id: str = Field(..., description="ASVS requirement ID (e.g., 'V6.2.1')")
     level: int = Field(..., ge=1, le=3, description="ASVS level (1, 2, or 3)")
-    category: str = Field(..., description="Requirement category (e.g., 'Password Security')")
-    requirement: str = Field(..., description="Full requirement text")
-    cwe: Optional[str] = Field(None, description="CWE mapping (e.g., 'CWE-521')")
-    description: str = Field(..., description="Detailed explanation of the requirement")
-    implementation_guide: str = Field(..., description="How to implement this requirement")
-    code_examples: list[str] = Field(
-        default_factory=list, description="Code examples demonstrating compliance"
+    category: str = Field(..., description="Section name (e.g., 'Password Security')")
+    chapter: str = Field(..., description="Chapter name (e.g., 'Authentication')")
+    requirement: str = Field(..., description="Full requirement text from official ASVS")
+    cwe: Optional[list[str]] = Field(None, description="CWE IDs from official mapping (e.g., ['CWE-521'])")
+    tags: list[str] = Field(
+        default_factory=list, description="Searchable tags derived from chapter/section"
     )
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "id": "2.1.1",
+                "id": "V6.2.1",
                 "level": 1,
                 "category": "Password Security",
-                "requirement": "Verify that user set passwords are at least 12 characters in length.",
-                "cwe": "CWE-521",
-                "description": "Passwords should be sufficiently long to resist brute force attacks.",
-                "implementation_guide": "Add validation during user registration and password change.",
-                "code_examples": ['if len(password) < 12: raise ValueError("Too short")'],
+                "chapter": "Authentication",
+                "requirement": "Verify that user set passwords are at least 8 characters in length although a minimum of 15 characters is strongly recommended.",
+                "cwe": ["CWE-521"],
+                "tags": ["authentication", "password_security"],
             }
         }
     )
@@ -139,9 +126,22 @@ class FixSuggestion(BaseModel):
 class SecurityRequirementsRequest(BaseModel):
     """Request for security requirements lookup."""
 
-    code_type: CodeType = Field(..., description="Type of code pattern")
+    category: Optional[str] = Field(None, description="ASVS category name (e.g., 'Password Security')")
+    chapter: Optional[str] = Field(None, description="ASVS chapter name (e.g., 'Authentication')")
+    query: Optional[str] = Field(None, description="Free-text search query")
+    level: Optional[str] = Field(
+        None, 
+        description="ASVS level - '1', '2', '3' for exact match, or '1,2' for multiple levels"
+    )
     language: Optional[str] = Field(None, description="Programming language")
     context: Optional[str] = Field(None, description="Additional context about the code")
+    
+    def model_post_init(self, __context):
+        """Validate that at least one search parameter is provided."""
+        if not any([self.category, self.chapter, self.query]):
+            raise ValueError("At least one of 'category', 'chapter', or 'query' must be provided")
+        if self.category and self.chapter:
+            raise ValueError("'category' and 'chapter' are mutually exclusive")
 
 
 class ScanCodeRequest(BaseModel):

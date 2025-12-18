@@ -9,9 +9,7 @@ from smithery.decorators import smithery
 #from smithery.schema import ConfigSchema
 
 from src.asvs.loader import get_asvs_collection
-from src.asvs.mapper import get_asvs_mapper
 from src.config import settings
-from src.models import CodeType
 from src.utils.formatters import (
     format_fix_suggestion,
     format_scan_results,
@@ -59,65 +57,204 @@ logger.info("Security scanners loaded successfully")
 
 
 @mcp.tool
+def list_asvs_categories() -> str:
+    """
+    List all available ASVS 5.0 categories and chapters for search.
+    
+    Use this tool to discover what categories and chapters are available
+    before calling check_security_requirements.
+    
+    Returns:
+        Formatted list of all chapters and their categories with requirement counts
+    """
+    try:
+        collection = get_asvs_collection()
+        
+        output = ["=" * 70]
+        output.append("ASVS 5.0 CATEGORIES & CHAPTERS")
+        output.append("=" * 70)
+        
+        # Group by chapter
+        chapters_data = {}
+        for req in collection.get_all():
+            if req.chapter not in chapters_data:
+                chapters_data[req.chapter] = {}
+            if req.category not in chapters_data[req.chapter]:
+                chapters_data[req.chapter][req.category] = 0
+            chapters_data[req.chapter][req.category] += 1
+        
+        output.append(f"\n📊 Total: {len(chapters_data)} chapters, {len(collection.get_categories())} categories, {collection.count()} requirements\n")
+        
+        # Format output
+        for chapter in sorted(chapters_data.keys()):
+            categories = chapters_data[chapter]
+            total_reqs = sum(categories.values())
+            output.append(f"\n📘 Chapter: '{chapter}' ({total_reqs} requirements)")
+            output.append("   Categories:")
+            for category in sorted(categories.keys()):
+                count = categories[category]
+                output.append(f"     • '{category}' ({count} reqs)")
+        
+        output.append("\n" + "=" * 70)
+        output.append("💡 USAGE EXAMPLES:")
+        output.append("=" * 70)
+        output.append("\n# Search by chapter (broad):")
+        output.append("check_security_requirements(chapter='Authentication')")
+        output.append("\n# Search by category (precise):")
+        output.append("check_security_requirements(category='Password Security')")
+        output.append("\n# Search with level filter (efficient):")
+        output.append("check_security_requirements(category='Password Security', level=1)")
+        
+        return "\n".join(output)
+    
+    except Exception as e:
+        logger.error(f"Error in list_asvs_categories: {e}", exc_info=True)
+        return f"Error listing categories: {str(e)}"
+
+
+@mcp.tool
 def check_security_requirements(
-    code_type: CodeType,
+    category: Optional[str] = None,
+    chapter: Optional[str] = None,
+    query: Optional[str] = None,
+    level: Optional[str] = None,
     language: Optional[str] = None,
     context: Optional[str] = None,
 ) -> str:
     """
-    Get relevant OWASP ASVS security requirements for a specific code pattern or security domain.
+    Get relevant OWASP ASVS 5.0 security requirements.
     
-    Returns detailed requirements with implementation guidance and code examples.
-    Use this BEFORE writing security-critical code to understand requirements.
+    Search by category (most precise), chapter (broader), or free-text query.
+    Use level filter to reduce results and token usage.
+    
+    💡 TIP: Use 'list_asvs_categories' tool first to see available categories and chapters.
     
     Args:
-        code_type: Type of code pattern (authentication, cryptography, input_validation, etc.)
-        language: Programming language for language-specific examples (optional)
+        category: ASVS category name (e.g., "Password Security")
+        chapter: ASVS chapter name (e.g., "Authentication")
+        query: Free-text search across requirements
+        level: Filter by ASVS level - "1", "2", "3" for exact match, or "1,2" for multiple levels
+               Examples: "1" (only L1), "1,2" (L1 and L2), "2,3" (L2 and L3)
+        language: Programming language for context (optional)
         context: Additional context about what you're building (optional)
-        
+    
     Returns:
-        Formatted ASVS requirements with implementation guidance and code examples
+        Formatted ASVS requirements with implementation guidance
+    
+    Examples:
+        # Precise:
+        category="Password Security" → 12 requirements
+        
+        # Broad:
+        chapter="Authentication" → 47 requirements
+        
+        # Filtered (exact level):
+        category="Password Security", level="1" → ONLY L1 requirements
+        
+        # Multiple levels:
+        category="Password Security", level="1,2" → L1 and L2 (not L3)
+        
+        # Natural language:
+        query="brute force protection" → 2-5 requirements
     """
     try:
-        logger.info(f"Checking security requirements for: {code_type.value}")
-
+        # Parse level parameter (string to int or list[int])
+        parsed_level: Optional[int | list[int]] = None
+        if level:
+            try:
+                # Check if it's a comma-separated list
+                if ',' in level:
+                    parsed_level = [int(x.strip()) for x in level.split(',')]
+                else:
+                    parsed_level = int(level)
+                
+                # Validate level values
+                levels_to_check = parsed_level if isinstance(parsed_level, list) else [parsed_level]
+                for lvl in levels_to_check:
+                    if lvl not in [1, 2, 3]:
+                        return f"❌ Error: Invalid level '{lvl}'. Must be 1, 2, or 3."
+            except ValueError:
+                return f"❌ Error: Invalid level format '{level}'. Use '1', '2', '3', or comma-separated like '1,2'."
+        
+        # Validation
+        if not any([category, chapter, query]):
+            return (
+                "❌ Error: At least one of 'category', 'chapter', or 'query' must be provided.\n\n"
+                "Examples:\n"
+                "  • category='Password Security'\n"
+                "  • chapter='Authentication'\n"
+                "  • query='brute force protection'\n"
+            )
+        
+        if category and chapter:
+            return "❌ Error: 'category' and 'chapter' are mutually exclusive. Use one or the other."
+        
+        logger.info(f"Checking requirements: category={category}, chapter={chapter}, query={query}, level={level}")
+        
         # Load ASVS collection
         collection = get_asvs_collection()
-        mapper = get_asvs_mapper()
-
-        # Get relevant categories for this code type
-        categories = mapper.map_code_type_to_categories(code_type)
-
-        # Gather requirements from these categories
-        requirements = []
-        for category in categories:
-            reqs = collection.get_by_category(category)
-            requirements.extend(reqs)
-
-        # Filter by minimum ASVS level
-        requirements = [r for r in requirements if r.level >= settings.min_asvs_level]
-
-        # Remove duplicates (by ID)
+        
+        # Perform search based on parameters
+        if category:
+            requirements = collection.get_by_category(category)
+            search_desc = f"category '{category}'"
+        elif chapter:
+            requirements = collection.get_by_chapter(chapter)
+            search_desc = f"chapter '{chapter}'"
+        elif query:
+            requirements = collection.search(query=query)
+            search_desc = f"query '{query}'"
+        
+        # Apply level filter (exact match or multiple levels)
+        if parsed_level is not None:
+            if isinstance(parsed_level, int):
+                # Single level: exact match
+                requirements = [r for r in requirements if r.level == parsed_level]
+            elif isinstance(parsed_level, list):
+                # Multiple levels: match any in list
+                requirements = [r for r in requirements if r.level in parsed_level]
+        else:
+            # No level specified: use min_level from env var (backwards compatible)
+            min_level = settings.min_asvs_level
+            requirements = [r for r in requirements if r.level >= min_level]
+        
+        # Remove duplicates
         seen_ids = set()
         unique_requirements = []
         for req in requirements:
             if req.id not in seen_ids:
                 seen_ids.add(req.id)
                 unique_requirements.append(req)
-
-        logger.info(f"Found {len(unique_requirements)} relevant requirements")
-
+        
+        if not unique_requirements:
+            return (
+                f"No requirements found for {search_desc}.\n\n"
+                "💡 Tip: Try a broader search:\n"
+                f"  • Use chapter instead of category\n"
+                f"  • Use a different search term\n"
+                f"  • Check spelling of category/chapter name\n"
+            )
+        
+        logger.info(f"Found {len(unique_requirements)} requirements for {search_desc}")
+        
         # Format output
-        req_context = f"Requirements for {code_type.value}"
+        req_context = f"Requirements for {search_desc}"
+        if parsed_level:
+            if isinstance(parsed_level, int):
+                req_context += f" (Level {parsed_level})"
+            else:
+                req_context += f" (Levels {', '.join(map(str, parsed_level))})"
         if language:
             req_context += f" in {language}"
         if context:
             req_context += f". Context: {context}"
-
+        
         return format_security_requirements(
-            unique_requirements, context=req_context, include_examples=True
+            unique_requirements, 
+            context=req_context, 
+            include_examples=True
         )
-
+    
     except Exception as e:
         logger.error(f"Error in check_security_requirements: {e}", exc_info=True)
         return f"Error checking requirements: {str(e)}"

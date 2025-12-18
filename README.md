@@ -11,17 +11,23 @@ VSGuard is the first MCP server that makes security automatic for AI-assisted de
 
 This MCP server integrates with Claude Code, Cursor, and other MCP-clients to enable **proactive security during code generation**. It helps AI agents write secure code from the start by providing:
 
-- **OWASP ASVS Requirements** - Real-time security guidance based on ASVS v4.0
+- **OWASP ASVS Requirements** - Real-time security guidance based on ASVS v5.0
 - **Vulnerability Scanning** - Static analysis using Semgrep with custom ASVS rules
 - **Secure Code Fixes** - Actionable remediation with code examples
   
 ## Features
 
-### Three Core Tools
+### Four Core Tools
 
-1. **`check_security_requirements`** - Get relevant ASVS requirements before writing code
-2. **`scan_code`** - Analyze code for vulnerabilities with ASVS mappings
-3. **`suggest_fix`** - Generate secure code alternatives with explanations
+1. **`list_asvs_categories`** - Discover available ASVS categories and chapters
+   - See all 17 chapters and 80 categories
+   - Find the right search terms for your needs
+2. **`check_security_requirements`** - Get relevant ASVS requirements before writing code
+   - Search by **category** (most precise) or **chapter** (broader)
+   - Free-text **query** search for natural language
+   - Filter by **level** to reduce token usage
+3. **`scan_code`** - Analyze code for vulnerabilities with ASVS mappings
+4. **`suggest_fix`** - Generate secure code alternatives with explanations
 
 ### Security Coverage
 
@@ -96,7 +102,7 @@ Create a user login endpoint, follow asvs requirements.
 **Claude will call:**
 ```python
 check_security_requirements(
-    code_type="authentication",
+    chapter="Authentication",  # or category="Password Security" for precision
     language="python"
 )
 ```

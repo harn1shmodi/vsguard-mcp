@@ -1,7 +1,7 @@
 [project]
 name = "vsguard-mcp"
-version = "0.2.0"
-description = "VSGuard MCP - Vulnerability Scanner & Guard for AI Coding Agents | OWASP ASVS Security Analysis"
+version = "2.0.0"
+description = "VSGuard MCP - Vulnerability Scanner & Guard for AI Coding Agents | OWASP ASVS 5.0 Security Analysis"
 authors = [
     {name = "VSGuard Contributors"}
 ]

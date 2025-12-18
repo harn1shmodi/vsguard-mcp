@@ -30,11 +30,12 @@ class ASVSRequirementCollection:
             self._by_level[requirement.level] = []
         self._by_level[requirement.level].append(requirement)
 
-        # Index by CWE
+        # Index by CWE (cwe is now a list)
         if requirement.cwe:
-            if requirement.cwe not in self._by_cwe:
-                self._by_cwe[requirement.cwe] = []
-            self._by_cwe[requirement.cwe].append(requirement)
+            for cwe in requirement.cwe:
+                if cwe not in self._by_cwe:
+                    self._by_cwe[cwe] = []
+                self._by_cwe[cwe].append(requirement)
 
     def get_by_id(self, requirement_id: str) -> Optional[ASVSRequirement]:
         """Get requirement by ID."""
@@ -43,6 +44,10 @@ class ASVSRequirementCollection:
     def get_by_category(self, category: str) -> list[ASVSRequirement]:
         """Get all requirements for a category."""
         return self._by_category.get(category, [])
+
+    def get_by_chapter(self, chapter: str) -> list[ASVSRequirement]:
+        """Get all requirements for a chapter."""
+        return [r for r in self.get_all() if r.chapter == chapter]
 
     def get_by_level(self, level: int) -> list[ASVSRequirement]:
         """Get all requirements for a level."""
@@ -66,8 +71,9 @@ class ASVSRequirementCollection:
 
     def search(
         self,
-        query: str,
+        query: Optional[str] = None,
         category: Optional[str] = None,
+        chapter: Optional[str] = None,
         level: Optional[int] = None,
         cwe: Optional[str] = None,
     ) -> list[ASVSRequirement]:
@@ -75,10 +81,11 @@ class ASVSRequirementCollection:
         Search requirements by text query with optional filters.
 
         Args:
-            query: Text to search for in requirement, description, or implementation guide
-            category: Filter by category
-            level: Filter by ASVS level
-            cwe: Filter by CWE
+            query: Text to search for in requirement text (optional)
+            category: Filter by category (optional)
+            chapter: Filter by chapter (optional)
+            level: Filter by ASVS level (optional)
+            cwe: Filter by CWE (optional)
 
         Returns:
             List of matching requirements
@@ -88,20 +95,23 @@ class ASVSRequirementCollection:
         # Apply filters
         if category:
             results = [r for r in results if r.category == category]
+        if chapter:
+            results = [r for r in results if r.chapter == chapter]
         if level:
             results = [r for r in results if r.level == level]
         if cwe:
-            results = [r for r in results if r.cwe == cwe]
+            results = [r for r in results if r.cwe and cwe in r.cwe]
 
-        # Text search
+        # Text search (now optional)
         if query:
             query_lower = query.lower()
             results = [
                 r
                 for r in results
                 if query_lower in r.requirement.lower()
-                or query_lower in r.description.lower()
-                or query_lower in r.implementation_guide.lower()
+                or query_lower in r.category.lower()
+                or query_lower in r.chapter.lower()
+                or any(query_lower in tag for tag in r.tags)
             ]
 
         return results

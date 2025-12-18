@@ -1,0 +1,13 @@
+{
+  "current_version": "5.0.0",
+  "last_updated": "2025-10-20",
+  "source_url": "https://raw.githubusercontent.com/OWASP/ASVS/master/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json",
+  "total_requirements": 345,
+  "enrichment_status": {
+    "total_enriched": 8,
+    "pending_enrichment": 337,
+    "last_enrichment_date": "2025-10-20"
+  },
+  "notes": "Initial version tracking. Run scripts/sync_asvs.sh to update."
+}
+

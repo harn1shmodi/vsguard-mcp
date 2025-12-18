@@ -14,24 +14,23 @@ class TestFormatters:
     """Test output formatting functions."""
 
     def test_format_security_requirements(self):
-        """Test formatting ASVS requirements."""
+        """Test formatting ASVS requirements (ASVS 5.0 format)."""
         req = ASVSRequirement(
-            id="2.1.1",
+            id="V6.2.1",
             level=1,
             category="Password Security",
-            requirement="Passwords must be at least 12 characters",
-            cwe="CWE-521",
-            description="Test description",
-            implementation_guide="Test guide",
-            code_examples=["example code"],
+            chapter="Authentication",
+            requirement="Verify that user set passwords are at least 8 characters in length",
+            cwe=["CWE-310"],
+            tags=["authentication", "password_security"],
         )
 
         output = format_security_requirements([req])
 
-        assert "2.1.1" in output
+        assert "V6.2.1" in output
         assert "Password Security" in output
-        assert "Level 1" in output
-        assert "example code" in output
+        assert "Level 1" in output or "L1" in output
+        assert "Authentication" in output
 
     def test_format_scan_results_passed(self):
         """Test formatting scan results with no findings."""
