@@ -43,10 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 # Create FastMCP server
-mcp = FastMCP(
-    "vsguard",
-    dependencies=["semgrep", "pyyaml", "pydantic"]
-)
+mcp = FastMCP("vsguard")
 
 
 from src.scanners.semgrep_scanner import SemgrepScanner
